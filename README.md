@@ -1,1 +1,1 @@
-# infopave-analyzer
+# InfoPave-Analyzer
