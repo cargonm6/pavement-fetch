@@ -1,3 +1,5 @@
+import time
+
 import csv
 from datetime import datetime
 
@@ -19,7 +21,7 @@ def save_csv(file, data):
 def list_equals(items):
     if len(items) > 1:
         for i in range(1, len(items)):
-            if float(items[0]) - float(items[i]) != 0:
+            if float(items[0].replace(",", ".")) - float(items[i].replace(",", ".")) != 0:
                 return False
     return True
 
@@ -33,30 +35,30 @@ def near_date(items, pivot):
     # Nearest date minor or equal than pivot, and difference
     try:
         nearest_under = min([i for i in items if i <= pivot], key=lambda x: abs(x - pivot))
-        timedelta_under = abs(nearest_under - pivot)
+        timedelta_under = nearest_under - pivot
     # If there are no minor or equal data
     except ValueError:
         nearest_under = min([i for i in items if i > pivot], key=lambda x: abs(x - pivot))
-        timedelta_under = abs(nearest_under - pivot)
+        timedelta_under = nearest_under - pivot
         flag = 1
 
     # Nearest date major than pivot, and difference
     try:
         nearest_over = min([i for i in items if i > pivot], key=lambda x: abs(x - pivot))
-        timedelta_over = abs(nearest_over - pivot)
+        timedelta_over = nearest_over - pivot
     # If there are no major data
     except ValueError:
         nearest_over = min([i for i in items if i <= pivot], key=lambda x: abs(x - pivot))
-        timedelta_over = abs(nearest_under - pivot)
+        timedelta_over = nearest_under - pivot
         flag = -1
 
-    # If deltas are not equal, gives a sign. Return nearest date over pivot
-    if flag == -1 or timedelta_under < timedelta_over:
-        return nearest_under, -1
-    elif flag == 1 or timedelta_under > timedelta_over:
-        return nearest_over, 1
+    # Return nearest date over pivot
+    if flag == -1 or abs(timedelta_under) < abs(timedelta_over):
+        return nearest_under, timedelta_under
+    elif flag == 1 or abs(timedelta_under) > abs(timedelta_over):
+        return nearest_over, timedelta_over
     else:
-        return nearest_over, 0
+        return nearest_over, timedelta_over
 
 
 def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
@@ -71,10 +73,10 @@ def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
     val_ind = []
     if len(rws_ind) > 0:
         # Get the nearest date into rows index array
-        near, flag = near_date([row[1] for row in rws_ind], to_date(row_ref[3], '%d/%m/%Y'))
+        nearest, timedelta = near_date([row[1] for row in rws_ind], to_date(row_ref[3], '%m/%d/%Y'))
         for rw_ind in rws_ind:
             # If row index date is the nearest, append to index value array
-            if rw_ind[1] == near:
+            if rw_ind[1] == nearest:
                 val_ind.append(rw_ind[0])
 
         # Data append:
@@ -83,7 +85,7 @@ def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
         # 3. Nearest date flag
         # 4. Check if all items in the array are the same
 
-        row_ref.extend([val_ind[0], len(rws_ind), flag, list_equals(val_ind)])
+        row_ref.extend([val_ind[0], len(rws_ind), timedelta, list_equals(val_ind)])
 
         # Mean of all values
         # row_ref.append(sum([float(i.replace(",", ".")) for i in rws_ind]) / len(rws_ind))
@@ -94,10 +96,16 @@ def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
 
 
 if __name__ == '__main__':
+    start_time = time.time()
+
+    print("(i) Loading CSV files...")
+
     csv_pci = load_csv("./csv/pci.csv")
     csv_iri = load_csv("./csv/iri.csv")
     csv_def = load_csv("./csv/deflection.csv")
     csv_skn = load_csv("./csv/sn.csv")
+
+    print("(✓) CSV files loaded in", '%.3f' % (time.time() - start_time), "seconds\n")
 
     tables = [
         ["PCI", "IRI", "DEF", "SKN"],
@@ -110,15 +118,13 @@ if __name__ == '__main__':
     ]
 
     for table in tables[0][1:]:
-        csv_pci[0].extend([table, table + " Number", table + " Dates", table + " Equal"])
+        csv_pci[0].extend([table, table + " N", table + " Time Delta", table + " Equal?"])
 
-    # print("IRI:", len(csv_iri), "x", len(csv_iri[0]))
-    # print("PCI:", len(csv_pci), "x", len(csv_pci[0]))
-    # print("DEF:", len(csv_def), "x", len(csv_def[0]))
-
-    limit = 100  # len(csv_pci)
+    limit = 10  # len(csv_pci)
 
     count = 0
+
+    print("(i) Stepping through the data ...")
 
     for row_pci in csv_pci[1:limit]:
 
@@ -137,6 +143,9 @@ if __name__ == '__main__':
             print("", round(count * 100 / len(csv_pci[1:limit]), 2), "%")
 
     save_path = "./res/" + datetime.now().strftime("(%d-%m-%Y_%H-%M-%S)") + "_PCI-IRI-DEF-SK" + ".csv"
-    save_csv(save_path, csv_pci)
+    save_csv(save_path, csv_pci[0:limit])
+
+    print("(✓)", str(limit), "entries saved to", save_path)
+    print("(✓) Program finished in", '%.3f' % (time.time() - start_time), "seconds")
 
     exit(0)
