@@ -2,6 +2,7 @@ import csv
 import numpy as np
 from scipy.stats import pearsonr
 from datetime import datetime
+import statistics
 
 
 def load_csv(file):
@@ -18,73 +19,136 @@ def save_csv(file, data):
     print("Data saved")
 
 
-def calc_correlation(data1, data2):
-    data_cov = np.cov(data1, data2)
-    data_cor, _ = pearsonr(data1, data2)
-    return [data_cov, data_cor]
+# def calc_correlation(data1, data2):
+#     data_cov = np.cov(data1, data2)
+#     data_cor, _ = pearsonr(data1, data2)
+#     return [data_cov, data_cor]
+
+
+def list_equals(items):
+    if len(items) > 1:
+        for i in range(1, len(items)):
+            if float(items[0]) - float(items[i]) != 0:
+                return False
+    return True
+
+
+def to_date(txt, date_f):
+    return datetime.strptime(txt[0:10], date_f)
+
+
+def near_date(items, pivot):
+    flag = 0
+    # Nearest date minor or equal than pivot, and difference
+    try:
+        nearest_under = min([i for i in items if i <= pivot], key=lambda x: abs(x - pivot))
+        timedelta_under = abs(nearest_under - pivot)
+    # If there are no minor or equal data
+    except ValueError:
+        nearest_under = min([i for i in items if i > pivot], key=lambda x: abs(x - pivot))
+        timedelta_under = abs(nearest_under - pivot)
+        flag = 1
+
+    # Nearest date major than pivot, and difference
+    try:
+        nearest_over = min([i for i in items if i > pivot], key=lambda x: abs(x - pivot))
+        timedelta_over = abs(nearest_over - pivot)
+    # If there are no major data
+    except ValueError:
+        nearest_over = min([i for i in items if i <= pivot], key=lambda x: abs(x - pivot))
+        timedelta_over = abs(nearest_under - pivot)
+        flag = -1
+
+    # If deltas are not equal, gives a sign. Return nearest date over pivot
+    if flag == -1 or timedelta_under < timedelta_over:
+        return nearest_under, -1
+    elif flag == 1 or timedelta_under > timedelta_over:
+        return nearest_over, 1
+    else:
+        return nearest_over, 0
+
+
+def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
+    # p1 STATE CODE
+    # p2 SECTION
+    # p3 CONSTRUCTION
+    # p4 VALUE OF INTEREST
+    # p5 DATE
+
+    rws_ind = []
+    for row_ind in csv_ind[1:]:
+        if [row_ref[0], row_ref[2], row_ref[4]] == [row_ind[p1], row_ind[p2], row_ind[p3]] and row_ind[p4] != "":
+            # If it matches all conditions, append a row with VALUE and DATE
+            print(row_ind[p5])
+            rws_ind.append([row_ind[p4].replace(",", "."), to_date(row_ind[p5], date_f)])
+
+    val_ind = []
+    if len(rws_ind) > 0:
+        # Get the nearest date into rows index array
+        near, flag = near_date([row[1] for row in rws_ind], to_date(row_ref[3], '%d/%m/%Y'))
+        for rw_ind in rws_ind:
+            # If row index date is the nearest, append to index value array
+            if rw_ind[1] == near:
+                val_ind.append(rw_ind[0])
+
+        # Data append:
+        # 1. Value
+        # 2. Number of elements that match all conditions
+        # 3. Nearest date flag
+        # 4. Check if all items in the array are the same
+
+        row_ref.extend([val_ind[0], len(rws_ind), flag, list_equals(val_ind)])
+
+        # Mean of all values
+        # row_ref.append(sum([float(i.replace(",", ".")) for i in rws_ind]) / len(rws_ind))
+    else:
+        row_ref.extend([None, len(rws_ind), None, None])
+
+    return row_ref
 
 
 if __name__ == '__main__':
+    csv_pci = load_csv("./csv/pci.csv")
     csv_iri = load_csv("./csv/iri.csv")
     csv_def = load_csv("./csv/deflection.csv")
-    csv_pci = load_csv("./csv/pci.csv")
     csv_skn = load_csv("./csv/sn.csv")
 
     csv_pci[0].append("IRI")
-    csv_pci[0].append("IRI N")
-    csv_pci[0].append("DEFLECTION")
-    csv_pci[0].append("DEFLECTION N")
-    csv_pci[0].append("SKID NUM")
-    csv_pci[0].append("SKID NUM N")
+    csv_pci[0].append("IRI Number")
+    csv_pci[0].append("IRI Dates")
+    csv_pci[0].append("IRI Equal")
+    csv_pci[0].append("DEF")
+    csv_pci[0].append("DEF Number")
+    csv_pci[0].append("DEF Dates")
+    csv_pci[0].append("DEF Equal")
+    csv_pci[0].append("SKN")
+    csv_pci[0].append("SKN Number")
+    csv_pci[0].append("SKN Dates")
+    csv_pci[0].append("SKN Equal")
 
     # print("IRI:", len(csv_iri), "x", len(csv_iri[0]))
     # print("PCI:", len(csv_pci), "x", len(csv_pci[0]))
     # print("DEF:", len(csv_def), "x", len(csv_def[0]))
 
-    limit = len(csv_pci)
+    limit = 10  # len(csv_pci)
 
     count = 0
     count2 = 0
 
     for row_pci in csv_pci[1:limit]:
 
-        # STATE CODE:   PCI[0], IRI[1], DEF[0], SKN[1]
-        # SECTION:      PCI[2], IRI[2], DEF[1], SKN[0]
-        # CONSTRUCTION: PCI[4], IRI[9], DEF[8], SKN[3]
+        #                     PCI   IRI   DEF   SKN
+        # ------------------+-----+-----+-----+-----+
+        # STATE CODE        |   0 |   1 |  0  |   1 |
+        # SECTION           |   2 |   3 |  1  |   0 |
+        # CONSTRUCTION      |   4 |  10 |  8  |   3 |
+        # VALUE OF INTEREST |  58 |   9 | 21  |  10 |
+        # DATE              |   3 |   0 |  2  |   4 |
+        # DATE FORMAT       | dmY | mdY | dmY | mdY |
 
-        rws_iri = []
-        for row_iri in csv_iri[1:]:
-            # PCI-IRI: Check State, Section and Construction Number
-            if [row_pci[0], row_pci[2], row_pci[4]] == [row_iri[1], row_iri[2], row_iri[9]] and row_iri[8] != "":
-                rws_iri.append(row_iri[8])
-        if len(rws_iri) > 0:
-            row_pci.append(sum([float(i.replace(",", ".")) for i in rws_iri]) / len(rws_iri))
-        else:
-            row_pci.append("-1")
-        row_pci.append(len(rws_iri))
-
-        rws_def = []
-        for row_def in csv_def[1:]:
-            # PCI-DEF: Check State, Section and Construction Number
-            if [row_pci[0], row_pci[2], row_pci[4]] == [row_def[0], row_def[1], row_def[8]] and row_def[21] != "":
-                rws_def.append(row_def[21])
-        if len(rws_def) > 0:
-            row_pci.append(sum([float(i.replace(",", ".")) for i in rws_def]) / len(rws_def))
-        else:
-            row_pci.append("-1")
-        row_pci.append(len(rws_def))
-
-        rws_skn = []
-        for row_skn in csv_skn[1:]:
-            # PCI-DEF: Check State, Section and Construction Number
-            if [row_pci[0], row_pci[2], row_pci[4]] == [row_skn[1], row_skn[0], row_skn[3]] and row_skn[10] != "":
-                rws_skn.append(row_skn[10])
-        # Evaluate the average SN of all measures
-        if len(rws_skn) > 0:
-            row_pci.append(sum([float(i.replace(",", ".")) for i in rws_skn]) / len(rws_skn))
-        else:
-            row_pci.append("-1")
-        row_pci.append(len(rws_skn))
+        row_pci = put_index(row_pci, csv_iri, 1, 2, 9, 8, 0, '%m/%d/%Y')
+        row_pci = put_index(row_pci, csv_def, 0, 1, 8, 21, 2, '%d/%m/%Y')
+        row_pci = put_index(row_pci, csv_skn, 1, 0, 3, 10, 4, '%m/%d/%Y')
 
         if len(row_pci) != len(csv_pci[0]):
             print("x", end="")
