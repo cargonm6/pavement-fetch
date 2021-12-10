@@ -1,8 +1,5 @@
 import csv
-import numpy as np
-from scipy.stats import pearsonr
 from datetime import datetime
-import statistics
 
 
 def load_csv(file):
@@ -17,12 +14,6 @@ def save_csv(file, data):
         write = csv.writer(f, delimiter=';')
         write.writerows(data)
     print("Data saved")
-
-
-# def calc_correlation(data1, data2):
-#     data_cov = np.cov(data1, data2)
-#     data_cor, _ = pearsonr(data1, data2)
-#     return [data_cov, data_cor]
 
 
 def list_equals(items):
@@ -69,18 +60,13 @@ def near_date(items, pivot):
 
 
 def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
-    # p1 STATE CODE
-    # p2 SECTION
-    # p3 CONSTRUCTION
-    # p4 VALUE OF INTEREST
-    # p5 DATE
+    # p1 STATE CODE, p2 SECTION, p3 CONSTRUCTION, p4 VALUE OF INTEREST, p5 DATE
 
     rws_ind = []
     for row_ind in csv_ind[1:]:
         if [row_ref[0], row_ref[2], row_ref[4]] == [row_ind[p1], row_ind[p2], row_ind[p3]] and row_ind[p4] != "":
             # If it matches all conditions, append a row with VALUE and DATE
-            print(row_ind[p5])
-            rws_ind.append([row_ind[p4].replace(",", "."), to_date(row_ind[p5], date_f)])
+            rws_ind.append([row_ind[p4], to_date(row_ind[p5], date_f)])
 
     val_ind = []
     if len(rws_ind) > 0:
@@ -113,38 +99,28 @@ if __name__ == '__main__':
     csv_def = load_csv("./csv/deflection.csv")
     csv_skn = load_csv("./csv/sn.csv")
 
-    csv_pci[0].append("IRI")
-    csv_pci[0].append("IRI Number")
-    csv_pci[0].append("IRI Dates")
-    csv_pci[0].append("IRI Equal")
-    csv_pci[0].append("DEF")
-    csv_pci[0].append("DEF Number")
-    csv_pci[0].append("DEF Dates")
-    csv_pci[0].append("DEF Equal")
-    csv_pci[0].append("SKN")
-    csv_pci[0].append("SKN Number")
-    csv_pci[0].append("SKN Dates")
-    csv_pci[0].append("SKN Equal")
+    tables = [
+        ["PCI", "IRI", "DEF", "SKN"],
+        [0, 1, 0, 1],  # STATE CODE COLUMN
+        [2, 3, 1, 0],  # SECTION COLUMN
+        [4, 10, 8, 3],  # CONSTRUCTION COLUMN
+        [58, 9, 21, 10],  # VALUE OF INTEREST COLUMN
+        [3, 0, 2, 4],  # DATE COLUMN
+        ['%m/%d/%Y', '%m/%d/%Y', '%d/%m/%Y', '%m/%d/%Y'],  # DATE FORMAT
+    ]
+
+    for table in tables[0][1:]:
+        csv_pci[0].extend([table, table + " Number", table + " Dates", table + " Equal"])
 
     # print("IRI:", len(csv_iri), "x", len(csv_iri[0]))
     # print("PCI:", len(csv_pci), "x", len(csv_pci[0]))
     # print("DEF:", len(csv_def), "x", len(csv_def[0]))
 
-    limit = 10  # len(csv_pci)
+    limit = 100  # len(csv_pci)
 
     count = 0
-    count2 = 0
 
     for row_pci in csv_pci[1:limit]:
-
-        #                     PCI   IRI   DEF   SKN
-        # ------------------+-----+-----+-----+-----+
-        # STATE CODE        |   0 |   1 |  0  |   1 |
-        # SECTION           |   2 |   3 |  1  |   0 |
-        # CONSTRUCTION      |   4 |  10 |  8  |   3 |
-        # VALUE OF INTEREST |  58 |   9 | 21  |  10 |
-        # DATE              |   3 |   0 |  2  |   4 |
-        # DATE FORMAT       | dmY | mdY | dmY | mdY |
 
         row_pci = put_index(row_pci, csv_iri, 1, 2, 9, 8, 0, '%m/%d/%Y')
         row_pci = put_index(row_pci, csv_def, 0, 1, 8, 21, 2, '%d/%m/%Y')
@@ -156,10 +132,8 @@ if __name__ == '__main__':
             print("|", end="")
 
         count += 1
-        count2 += 1
 
-        if count2 == 10 or count == len(csv_pci[1:limit]):
-            count2 = 0
+        if count % 10 == 0 or count == len(csv_pci[1:limit]):
             print("", round(count * 100 / len(csv_pci[1:limit]), 2), "%")
 
     save_path = "./res/" + datetime.now().strftime("(%d-%m-%Y_%H-%M-%S)") + "_PCI-IRI-DEF-SK" + ".csv"
