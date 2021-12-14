@@ -3,6 +3,48 @@ import time
 import csv
 from datetime import datetime
 
+pci_columns = {
+    "STATE_CODE": None,  # Common parameters
+    "SHRP_ID": None,
+    "CONSTRUCTION_NO": None,
+    "SURVEY_DATE": None,  # Own parameters
+    "PCI": None
+}
+
+iri_columns = {
+    "STATE_CODE": None,  # Common parameters
+    "SHRP_ID": None,
+    "CONSTRUCTION_NO": None,
+    "VISIT_DATE": None,  # Own parameters
+    "RUN_NUMBER": None,
+    "MRI": None
+}
+
+def_columns = {
+    "STATE_CODE": None,  # Common parameters
+    "SHRP_ID": None,
+    "CONSTRUCTION_NO": None,
+    "TEST_DATE": None,  # Own parameters
+    "PEAK_DEFL_1": None,
+    "PEAK_DEFL_2": None,
+    "PEAK_DEFL_3": None,
+    "PEAK_DEFL_4": None,
+    "PEAK_DEFL_5": None,
+    "PEAK_DEFL_6": None,
+    "PEAK_DEFL_7": None,
+    "PEAK_DEFL_8": None,
+    "PEAK_DEFL_9": None,
+}
+
+skn_columns = {
+    "STATE_CODE": None,  # Common parameters
+    "SHRP_ID": None,
+    "CONSTRUCTION_NO": None,
+    "FRICTION_DATE": None,  # Own parameters
+    "FRICTION_NO_BEGIN": None,
+    "FRICTION_NO_END": None
+}
+
 
 def load_csv(file):
     with open(file, 'r', newline='') as f:
@@ -95,6 +137,18 @@ def put_index(row_ref, csv_ind, p1, p2, p3, p4, p5, date_f):
     return row_ref
 
 
+def update_dict(p_dict, p_list):
+    dict_keys = list(p_dict)
+
+    for i in range(0, len(p_dict)):
+        for j in range(0, len(p_list[0])):
+            if dict_keys[i] == p_list[0][j]:
+                p_dict[dict_keys[i]] = j
+                break
+
+    return p_dict
+
+
 if __name__ == '__main__':
     start_time = time.time()
 
@@ -102,50 +156,66 @@ if __name__ == '__main__':
 
     csv_pci = load_csv("./csv/pci.csv")
     csv_iri = load_csv("./csv/iri.csv")
-    csv_def = load_csv("./csv/deflection.csv")
-    csv_skn = load_csv("./csv/sn.csv")
+    csv_def = load_csv("./csv/def.csv")
+    csv_skn = load_csv("./csv/skn.csv")
 
-    print("(✓) CSV files loaded in", '%.3f' % (time.time() - start_time), "seconds\n")
+    print(" ✓  CSV files loaded in", '%.3f' % (time.time() - start_time), "seconds\n")
 
-    tables = [
-        ["PCI", "IRI", "DEF", "SKN"],
-        [0, 1, 0, 1],  # STATE CODE COLUMN
-        [2, 3, 1, 0],  # SECTION COLUMN
-        [4, 10, 8, 3],  # CONSTRUCTION COLUMN
-        [58, 9, 21, 10],  # VALUE OF INTEREST COLUMN
-        [3, 0, 2, 4],  # DATE COLUMN
-        ['%m/%d/%Y', '%m/%d/%Y', '%d/%m/%Y', '%m/%d/%Y'],  # DATE FORMAT
-    ]
+    sub_time = time.time()
 
-    for table in tables[0][1:]:
-        csv_pci[0].extend([table, table + " N", table + " Time Delta", table + " Equal?"])
+    pci_columns = update_dict(pci_columns, csv_pci)
+    iri_columns = update_dict(iri_columns, csv_iri)
+    def_columns = update_dict(def_columns, csv_def)
+    skn_columns = update_dict(skn_columns, csv_skn)
 
-    limit = 10  # len(csv_pci)
+    print("- ", pci_columns)
+    print("- ", iri_columns)
+    print("- ", def_columns)
+    print("- ", skn_columns)
 
-    count = 0
+    csv_pci[0].extend(["IRI", "DEF", "SKN"])
 
-    print("(i) Stepping through the data ...")
+    for row_pci in csv_pci[1:]:
 
-    for row_pci in csv_pci[1:limit]:
-
-        row_pci = put_index(row_pci, csv_iri, 1, 2, 9, 8, 0, '%m/%d/%Y')
-        row_pci = put_index(row_pci, csv_def, 0, 1, 8, 21, 2, '%d/%m/%Y')
-        row_pci = put_index(row_pci, csv_skn, 1, 0, 3, 10, 4, '%m/%d/%Y')
-
-        if len(row_pci) != len(csv_pci[0]):
-            print("x", end="")
-        else:
-            print("|", end="")
-
-        count += 1
-
-        if count % 10 == 0 or count == len(csv_pci[1:limit]):
-            print("", round(count * 100 / len(csv_pci[1:limit]), 2), "%")
-
-    save_path = "./res/" + datetime.now().strftime("(%d-%m-%Y_%H-%M-%S)") + "_PCI-IRI-DEF-SK" + ".csv"
-    save_csv(save_path, csv_pci[0:limit])
-
-    print("(✓)", str(limit), "entries saved to", save_path)
-    print("(✓) Program finished in", '%.3f' % (time.time() - start_time), "seconds")
+        for row_iri in csv_iri[1:]:
+            if [row_pci[pci_columns["STATE_CODE"]],
+                row_pci[pci_columns["SHRP_ID"]],
+                row_pci[pci_columns["CONSTRUCTION_NO"]]] == [row_iri[iri_columns["STATE_CODE"]],
+                                                             row_iri[iri_columns["SHRP_ID"]],
+                                                             row_iri[iri_columns["CONSTRUCTION_NO"]]]:
+                row_pci.append(row_iri[iri_columns["MRI"]])
 
     exit(0)
+
+    # for table in tables[0][1:]:
+    #     csv_pci[0].extend([table, table + " N", table + " Time Delta", table + " Equal?"])
+    #
+    # limit = 10  # len(csv_pci)
+    #
+    # count = 0
+    #
+    # print("(i) Stepping through the data ...")
+    #
+    # for row_pci in csv_pci[1:limit]:
+    #
+    #     row_pci = put_index(row_pci, csv_iri, 1, 2, 9, 8, 0, '%m/%d/%Y')
+    #     row_pci = put_index(row_pci, csv_def, 0, 1, 8, 21, 2, '%d/%m/%Y')
+    #     row_pci = put_index(row_pci, csv_skn, 1, 0, 3, 10, 4, '%m/%d/%Y')
+    #
+    #     if len(row_pci) != len(csv_pci[0]):
+    #         print("x", end="")
+    #     else:
+    #         print("|", end="")
+    #
+    #     count += 1
+    #
+    #     if count % 10 == 0 or count == len(csv_pci[1:limit]):
+    #         print("", round(count * 100 / len(csv_pci[1:limit]), 2), "%")
+    #
+    # save_path = "./res/" + datetime.now().strftime("(%d-%m-%Y_%H-%M-%S)") + "_PCI-IRI-DEF-SK" + ".csv"
+    # save_csv(save_path, csv_pci[0:limit])
+    #
+    # print("(✓)", str(limit), "entries saved to", save_path)
+    # print("(✓) Program finished in", '%.3f' % (time.time() - start_time), "seconds")
+    #
+    # exit(0)
