@@ -1,5 +1,14 @@
+# Ignore PyCharm files
+.idea/
+
 # Ignore virtual Python environments
 venv/
 
-# Ignore CSV files
+# Ignore data folders
+csv/
+res/
+xls/
+
+# Ignore data files
 *.csv
+*.xlsx

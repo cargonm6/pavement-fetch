@@ -1,4 +1,1 @@
-requests
-matplotlib
-numpy
-scipy
+pandas~=1.3.5
