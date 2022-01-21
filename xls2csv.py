@@ -1,21 +1,173 @@
+import math
 import os
 import statistics
 import sys
+import time
 
 import pandas
 
 import csv
 
 
-def extract_pci(save_path, pci_filename, pci_sheet="MON_HSS_PROFILE_SECTION"):
-    return save_path, pci_filename, pci_sheet
+def extract_def(save_path, def_filename, def_sheet="MON_DEFL_DROP_DATA"):
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (def_sheet, def_filename))
 
+    # Dictionary
+    def_cols = {
+        "STATE_CODE": None, "SHRP_ID": None, "CONSTRUCTION_NO": None, "TEST_DATE": None,
+        "POINT_LOC": None, "LANE_NO": None, "DROP_HEIGHT": None, "PEAK_DEFL_1": None, "PEAK_DEFL_2": None,
+        "PEAK_DEFL_3": None, "PEAK_DEFL_4": None, "PEAK_DEFL_5": None, "PEAK_DEFL_6": None,
+    }
 
-def extract_def(save_path, def_filename, def_sheet="MON_HSS_PROFILE_SECTION"):
-    return save_path, def_filename, def_sheet
+    # Read Excel file and save as DataFrame
+    df = pandas.read_excel(io=def_filename, sheet_name=def_sheet)
+
+    # Append header
+    def_list = [[column for column in df.columns]]
+    def_sub1 = [[column for column in df.columns]]
+    def_sub2 = [[column for column in df.columns]]
+    def_sub3 = [[column for column in df.columns]]
+
+    # Append values
+    for values in df.values:
+        def_list.append([value for value in values])
+
+    for def_col in def_cols:
+        if def_cols[def_col] is None:
+            def_cols[def_col] = def_list[0].index(def_col)
+
+    # Filter: only DROP_HEIGHT = 2 and LANE_NO = F1 | F3
+    def_list = [[column for column in df.columns]] + list(
+        filter(lambda x: x[def_cols["DROP_HEIGHT"]] == 2 and (x[def_cols["LANE_NO"]] in ["F1", "F3"]), def_list))
+
+    # For loop in def_list
+    for i in range(1, len(def_list)):
+        status = False
+
+        # If there is a previous register
+        for j in range(1, len(def_sub1)):
+            if [def_list[i][def_cols["STATE_CODE"]],
+                def_list[i][def_cols["SHRP_ID"]],
+                def_list[i][def_cols["CONSTRUCTION_NO"]],
+                def_list[i][def_cols["TEST_DATE"]],
+                def_list[i][def_cols["LANE_NO"]],
+                def_list[i][def_cols["POINT_LOC"]]] == [def_sub1[j][def_cols["STATE_CODE"]],
+                                                        def_sub1[j][def_cols["SHRP_ID"]],
+                                                        def_sub1[j][def_cols["CONSTRUCTION_NO"]],
+                                                        def_sub1[j][def_cols["TEST_DATE"]],
+                                                        def_sub1[j][def_cols["LANE_NO"]],
+                                                        def_sub1[j][def_cols["POINT_LOC"]]]:
+
+                # Si existía esa entrada, comprueba si PEAK_DEFL_1 es el máximo, y si no, lo copia
+                if def_sub1[j][def_cols["PEAK_DEFL_1"]] < def_list[i][def_cols["PEAK_DEFL_1"]]:
+                    def_sub1[j][def_cols["PEAK_DEFL_1"]] = def_list[i][def_cols["PEAK_DEFL_1"]]
+
+                status = True
+
+        # Si no existía esa entrada, la copia
+        if not status:
+            def_sub1.append(def_list[i])
+
+        sys.stdout.write("\r- [DEF etapa 1]: %d/%d" % (i, len(def_list) - 1))
+
+    print("")
+
+    # For loop in def_list
+    for i in range(1, len(def_sub1)):
+        status = False
+
+        # If there is a previous register
+        for j in range(1, len(def_sub2)):
+            if [def_sub1[i][def_cols["STATE_CODE"]],
+                def_sub1[i][def_cols["SHRP_ID"]],
+                def_sub1[i][def_cols["CONSTRUCTION_NO"]],
+                def_sub1[i][def_cols["TEST_DATE"]],
+                def_sub1[i][def_cols["LANE_NO"]]] == [def_sub2[j][def_cols["STATE_CODE"]],
+                                                      def_sub2[j][def_cols["SHRP_ID"]],
+                                                      def_sub2[j][def_cols["CONSTRUCTION_NO"]],
+                                                      def_sub2[j][def_cols["TEST_DATE"]],
+                                                      def_sub2[j][def_cols["LANE_NO"]]]:
+                # Añade la deflexión
+                def_sub2[j].append(def_sub1[i][def_cols["PEAK_DEFL_1"]])
+                status = True
+
+        # Si no existía esa entrada, la copia y añade la deflexión al final
+        if not status:
+            def_sub2.append(def_sub1[i])
+            def_sub2[-1].append(def_sub1[i][def_cols["PEAK_DEFL_1"]])
+
+        sys.stdout.write("\r- [DEF etapa 2]: %d/%d" % (i, len(def_sub1) - 1))
+
+    print("")
+
+    for i in range(1, len(def_sub2)):
+        deflections = def_sub2[i][len(def_sub2[0]):len(def_sub2[i])]
+        def_sub2[i].append(statistics.mean(deflections))
+        def_sub2[i].append(max(deflections))
+        def_sub2[i].append(statistics.mean(deflections) + 2 * statistics.stdev(deflections))
+
+    # For loop in def_list
+    for i in range(1, len(def_sub2)):
+        status = False
+
+        # If there is a previous register
+        for j in range(1, len(def_sub3)):
+            if [def_sub2[i][def_cols["STATE_CODE"]],
+                def_sub2[i][def_cols["SHRP_ID"]],
+                def_sub2[i][def_cols["CONSTRUCTION_NO"]],
+                def_sub2[i][def_cols["TEST_DATE"]]] == [def_sub3[j][def_cols["STATE_CODE"]],
+                                                        def_sub3[j][def_cols["SHRP_ID"]],
+                                                        def_sub3[j][def_cols["CONSTRUCTION_NO"]],
+                                                        def_sub3[j][def_cols["TEST_DATE"]]]:
+                if def_sub2[i][def_cols["LANE_NO"]] == "F1":
+                    def_sub3[j][def_cols["PEAK_DEFL_1"]] = def_sub2[i][-3]
+                    def_sub3[j][def_cols["PEAK_DEFL_2"]] = def_sub2[i][-2]
+                    def_sub3[j][def_cols["PEAK_DEFL_3"]] = def_sub2[i][-1]
+                else:
+                    def_sub3[j][def_cols["PEAK_DEFL_4"]] = def_sub2[i][-3]
+                    def_sub3[j][def_cols["PEAK_DEFL_5"]] = def_sub2[i][-2]
+                    def_sub3[j][def_cols["PEAK_DEFL_6"]] = def_sub2[i][-1]
+
+                status = True
+
+        # Si no existía esa entrada, la copia y añade la deflexión al final
+        if not status:
+            def_sub3.append(def_sub2[i][0:len(def_sub2[0])])
+            if def_sub2[i][def_cols["LANE_NO"]] == "F1":
+                def_sub3[-1][def_cols["PEAK_DEFL_1"]] = def_sub2[i][-3]
+                def_sub3[-1][def_cols["PEAK_DEFL_2"]] = def_sub2[i][-2]
+                def_sub3[-1][def_cols["PEAK_DEFL_3"]] = def_sub2[i][-1]
+            else:
+                def_sub3[-1][def_cols["PEAK_DEFL_4"]] = def_sub2[i][-3]
+                def_sub3[-1][def_cols["PEAK_DEFL_5"]] = def_sub2[i][-2]
+                def_sub3[-1][def_cols["PEAK_DEFL_6"]] = def_sub2[i][-1]
+
+        sys.stdout.write("\r- [DEF etapa 3]: %d/%d" % (i, len(def_sub2) - 1))
+
+    [def_sub3[0][def_cols["PEAK_DEFL_1"]], def_sub3[0][def_cols["PEAK_DEFL_2"]],
+     def_sub3[0][def_cols["PEAK_DEFL_3"]], def_sub3[0][def_cols["PEAK_DEFL_4"]],
+     def_sub3[0][def_cols["PEAK_DEFL_5"]], def_sub3[0][def_cols["PEAK_DEFL_6"]]] = ["F1_DEF_AVG", "F1_DEF_MAX",
+                                                                                    "F1_DEF_CHR", "F3_DEF_AVG",
+                                                                                    "F3_DEF_MAX", "F3_DEF_CHR"]
+
+    for i in range(0, len(def_sub3)):
+        def_sub3[i] = [def_sub3[i][def_cols["STATE_CODE"]], def_sub3[i][def_cols["SHRP_ID"]],
+                       def_sub3[i][def_cols["CONSTRUCTION_NO"]], def_sub3[i][def_cols["TEST_DATE"]],
+                       def_sub3[i][def_cols["PEAK_DEFL_1"]], def_sub3[i][def_cols["PEAK_DEFL_2"]],
+                       def_sub3[i][def_cols["PEAK_DEFL_3"]], def_sub3[i][def_cols["PEAK_DEFL_4"]],
+                       def_sub3[i][def_cols["PEAK_DEFL_5"]], def_sub3[i][def_cols["PEAK_DEFL_6"]]]
+
+        for j in range(0, len(def_sub3[i])):
+            def_sub3[i][j] = str(def_sub3[i][j]).replace(".", ",")
+
+    print("")
+
+    save_csv(save_path, def_sub3)
 
 
 def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (iri_sheet, iri_filename))
+
     # For each STATE_CODE + SHRP_ID + CONSTRUCTION_NO + VISIT_DATE:
     # - Obtain total number of runs
     # - Calculate the average MRI
@@ -24,7 +176,7 @@ def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
     # Dictionary
     iri_cols = {
         "STATE_CODE": None, "SHRP_ID": None, "CONSTRUCTION_NO": None, "VISIT_DATE": None,
-        "RUN_NUMBER": None, "MRI": None, "RUNS": None, "SD": None,
+        "RUN_NUMBER": None, "MRI": None, "RUNS": None, "CV": None,
     }
 
     # Read Excel file and save as DataFrame
@@ -42,7 +194,7 @@ def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
 
     # Assign indexes to dictionary
     iri_cols["RUNS"] = len(df.columns)
-    iri_cols["SD"] = len(df.columns) + 1
+    iri_cols["CV"] = len(df.columns) + 1
     for iri_col in iri_cols:
         if iri_cols[iri_col] is None:
             iri_cols[iri_col] = iri_list[0].index(iri_col)
@@ -64,7 +216,7 @@ def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
                 # Sum MRI and increase run counter
                 iri_results[j][iri_cols["MRI"]] += iri_list[i][iri_cols["MRI"]]
                 iri_results[j][iri_cols["RUNS"]] += 1
-                iri_results[j][iri_cols["SD"]].append(iri_list[i][iri_cols["MRI"]])
+                iri_results[j][iri_cols["CV"]].append(iri_list[i][iri_cols["MRI"]])
                 status = True
 
         # Add a new register
@@ -77,10 +229,11 @@ def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
 
     for i in range(1, len(iri_results)):
         iri_results[i][iri_cols["MRI"]] = iri_results[i][iri_cols["MRI"]] / iri_results[i][iri_cols["RUNS"]]
-        if len(iri_results[i][iri_cols["SD"]]) > 1:
-            iri_results[i][iri_cols["SD"]] = (statistics.stdev(iri_results[i][iri_cols["SD"]]))
+        if len(iri_results[i][iri_cols["CV"]]) > 1:
+            iri_results[i][iri_cols["CV"]] = \
+                (statistics.stdev(iri_results[i][iri_cols["CV"]]) / statistics.mean(iri_results[i][iri_cols["CV"]]))
         else:
-            iri_results[i][iri_cols["SD"]] = 0
+            iri_results[i][iri_cols["CV"]] = 0
 
         # Convert data to string
         for j in range(0, len(iri_results[i])):
@@ -94,13 +247,15 @@ def extract_iri(save_path, iri_filename, iri_sheet="MON_HSS_PROFILE_SECTION"):
                           iri_results[i][iri_cols["VISIT_DATE"]],
                           iri_results[i][iri_cols["MRI"]],
                           iri_results[i][iri_cols["RUNS"]],
-                          iri_results[i][iri_cols["SD"]]]
+                          iri_results[i][iri_cols["CV"]]]
 
     # Save to CSV
     save_csv(save_path, iri_results)
 
 
 def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (skn_sheet, skn_filename))
+
     # For each STATE_CODE + SHRP_ID + CONSTRUCTION_NO + FRICTION_DATE:
     # - Obtain total number of runs
     # - Calculate the average FRICTION NUMBER
@@ -109,7 +264,7 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
     # Dictionary
     skn_cols = {
         "STATE_CODE": None, "SHRP_ID": None, "CONSTRUCTION_NO": None, "FRICTION_DATE": None,
-        "FRICTION_TIME": None, "FRICTION_NO_BEGIN": None, "FRICTION_NO_END": None, "RUNS": None, "SD": None,
+        "FRICTION_TIME": None, "FRICTION_NO_BEGIN": None, "FRICTION_NO_END": None, "RUNS": None, "CV": None,
     }
 
     # Read Excel file and save as DataFrame
@@ -127,7 +282,7 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
 
     # Assign indexes to dictionary
     skn_cols["RUNS"] = len(df.columns)
-    skn_cols["SD"] = len(df.columns) + 1
+    skn_cols["CV"] = len(df.columns) + 1
     for skn_col in skn_cols:
         if skn_cols[skn_col] is None:
             skn_cols[skn_col] = skn_list[0].index(skn_col)
@@ -148,7 +303,7 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
                                                             skn_results[j][skn_cols["FRICTION_DATE"]]]:
                 # Sum MRI and increase run counter
                 skn_results[j][skn_cols["RUNS"]] += 2
-                skn_results[j][skn_cols["SD"]].extend(
+                skn_results[j][skn_cols["CV"]].extend(
                     [skn_list[i][skn_cols["FRICTION_NO_BEGIN"]] + skn_list[i][skn_cols["FRICTION_NO_END"]]])
                 status = True
 
@@ -162,13 +317,14 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
         sys.stdout.write("\r- [FRICTION]: %d/%d" % (i, len(skn_list) - 1))
 
     for i in range(1, len(skn_results)):
-        skn_results[i][skn_cols["FRICTION_NO_END"]] = sum(skn_results[i][skn_cols["SD"]]) / skn_results[i][
+        skn_results[i][skn_cols["FRICTION_NO_END"]] = sum(skn_results[i][skn_cols["CV"]]) / skn_results[i][
             skn_cols["RUNS"]]
 
-        if len(skn_results[i][skn_cols["SD"]]) > 1:
-            skn_results[i][skn_cols["SD"]] = (statistics.stdev(skn_results[i][skn_cols["SD"]]))
+        if len(skn_results[i][skn_cols["CV"]]) > 1:
+            skn_results[i][skn_cols["CV"]] = \
+                (statistics.stdev(skn_results[i][skn_cols["CV"]]) / statistics.mean(skn_results[i][skn_cols["CV"]]))
         else:
-            skn_results[i][skn_cols["SD"]] = 0
+            skn_results[i][skn_cols["CV"]] = 0
 
         # Convert data to string
         for j in range(0, len(skn_results[i])):
@@ -182,7 +338,7 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
                           skn_results[i][skn_cols["FRICTION_DATE"]],
                           skn_results[i][skn_cols["FRICTION_NO_END"]],
                           skn_results[i][skn_cols["RUNS"]],
-                          skn_results[i][skn_cols["SD"]]]
+                          skn_results[i][skn_cols["CV"]]]
 
     # Save to CSV
     save_csv(save_path, skn_results)
@@ -250,28 +406,36 @@ def extract_vws(save_path, vws_filename):
     vws_results = [list(vws_cols.keys())]
 
     # MONTH measures
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[1], vws_filename))
     vws_results = vws_add_values(vws_pr_m_list, vws_results, True, ["TOTAL_MON_PRECIP",
                                                                     "TOTAL_SNOWFALL_MONTH"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[3], vws_filename))
     vws_results = vws_add_values(vws_te_m_list, vws_results, True, ["MEAN_MON_TEMP_AVG",
                                                                     "FREEZE_INDEX_MONTH",
                                                                     "FREEZE_THAW_MONTH"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[5], vws_filename))
     vws_results = vws_add_values(vws_wi_m_list, vws_results, True, ["MEAN_MON_WIND_AVG"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[7], vws_filename))
     vws_results = vws_add_values(vws_hu_m_list, vws_results, True, ["MAX_MON_HUM_AVG",
                                                                     "MIN_MON_HUM_AVG"])
 
     # ANNUAL measures
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[0], vws_filename))
     vws_results = vws_add_values(vws_pr_a_list, vws_results, False, ["TOTAL_ANN_PRECIP",
                                                                      "TOTAL_SNOWFALL_YR"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[2], vws_filename))
     vws_results = vws_add_values(vws_te_a_list, vws_results, False, ["MEAN_ANN_TEMP_AVG",
                                                                      "FREEZE_INDEX_YR",
                                                                      "FREEZE_THAW_YR"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[4], vws_filename))
     vws_results = vws_add_values(vws_wi_a_list, vws_results, False, ["MEAN_ANN_WIND_AVG"])
 
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (vws_sheet[6], vws_filename))
     vws_results = vws_add_values(vws_hu_a_list, vws_results, False, ["MAX_ANN_HUM_AVG",
                                                                      "MIN_ANN_HUM_AVG"])
 
@@ -285,9 +449,7 @@ def extract_vws(save_path, vws_filename):
 
 
 def vws_add_values(vws_in, vws_out, by_month, vws_columns):
-    limit = len(vws_in)
-
-    for i in range(1, limit):
+    for i in range(1, len(vws_in)):
         status = False
         for j in range(1, len(vws_out)):
             if by_month:
@@ -334,7 +496,7 @@ def save_csv(p_path, p_data):
         write = csv.writer(f, delimiter=';')
         write.writerows(p_data)
 
-    print("\nData saved\n")
+    print("\n\U0001F5AB Data saved")
 
 
 def question_yn(p_question):
@@ -348,38 +510,55 @@ def question_yn(p_question):
             print("Command not recognized.")
 
 
+def str_time(p_time):
+    return time.strftime('%Hh %Mm %Ss ', time.gmtime(p_time)) + str(
+        round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
+
+
 if __name__ == '__main__':
     # Root directories
     csv_path, xls_path = "./csv", "./xls"
 
     if not os.path.isdir(xls_path):
-        print("The input directory \"%s\" does not exist. " % xls_path)
+        print("\U000026D4 The input directory \"%s\" does not exist. " % xls_path)
         exit(1)
 
     if not os.path.isdir(csv_path):
         try:
-            print("The output directory \"%s\" does not exist and will be created. " % csv_path)
+            print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % csv_path)
             os.mkdir(csv_path)
         except OSError:
-            print("The output directory \"%s\" does not exist and could not be created. " % csv_path)
+            print("\U000026D4 The output directory \"%s\" does not exist and could not be created. " % csv_path)
             exit(1)
+    else:
+        print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
 
     # Excel input file addresses
-    xls_pci = xls_iri = xls_def = xls_skn = xls_vws = xls_path + "/Bucket_98025.xlsx"
+    xls_iri = xls_def = xls_skn = xls_vws = xls_path + "/Bucket_98025.xlsx"
 
     # CSV output file addresses
-    [csv_pci, csv_iri, csv_def, csv_skn, csv_vws] = [csv_path + s for s in
-                                                     ["/pci.csv", "/iri.csv", "/def.csv", "/skn.csv", "/vws.csv"]]
+    [csv_iri, csv_def, csv_skn, csv_vws] = [csv_path + s for s in ["/iri.csv", "/def.csv", "/skn.csv", "/vws.csv"]]
 
-    question = question_yn("Do you want to start a clean process?")
+    question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
 
-    if os.path.isfile(csv_pci) and (question or question_yn("\"%s\" already exists Regenerate?" % csv_pci)):
-        extract_pci(csv_pci, xls_pci)
-    if os.path.isfile(csv_iri) and (question or question_yn("\"%s\" already exists Regenerate?" % csv_iri)):
-        extract_iri(csv_iri, xls_iri)
-    if os.path.isfile(csv_def) and (question or question_yn("\"%s\" already exists Regenerate?" % csv_def)):
-        extract_def(csv_def, xls_def)
-    if os.path.isfile(csv_skn) and (question or question_yn("\"%s\" already exists Regenerate?" % csv_skn)):
-        extract_skn(csv_skn, xls_skn)
-    if os.path.isfile(csv_vws) and (question or question_yn("\"%s\" already exists Regenerate?" % csv_vws)):
-        extract_vws(csv_vws, xls_vws)
+    csv_tables = [csv_iri, csv_def, csv_skn, csv_vws]
+    xls_tables = [xls_iri, xls_def, xls_skn, xls_vws]
+
+    total_time = 0
+
+    for k in range(0, len(csv_tables)):
+        if not os.path.isfile(csv_tables[k]) or (os.path.isfile(csv_tables[k]) and (question or question_yn(
+                "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
+            start_time = time.time()
+
+            extract_iri(csv_tables[k], xls_tables[k]) if k == 0 else 0
+            extract_def(csv_tables[k], xls_tables[k]) if k == 1 else 0
+            extract_skn(csv_tables[k], xls_tables[k]) if k == 2 else 0
+            extract_vws(csv_tables[k], xls_tables[k]) if k == 3 else 0
+
+            partial_time = time.time() - start_time
+            total_time += partial_time
+            print("\U00002BA1 File \"%s\" converted in \"%s\" (%s)\n" % (
+                csv_tables[k], xls_tables[k], str_time(partial_time)))
+
+    print("\U0001F6C8 Program finished in %s" % str_time(total_time))
