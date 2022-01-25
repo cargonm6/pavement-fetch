@@ -4,11 +4,6 @@
 # Ignore virtual Python environments
 venv/
 
-# Ignore data folders
-csv/
-res/
-xls/
-
 # Ignore data files
 *.csv
 *.xlsx
