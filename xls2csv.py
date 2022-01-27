@@ -4,6 +4,7 @@ import statistics
 import sys
 import time
 from operator import itemgetter
+from copy import deepcopy
 
 import pandas
 
@@ -34,7 +35,7 @@ def extract_cnd(save_path, cnd_filename, cnd_sheet="EXPERIMENT_SECTION"):
             row.append(cnd_list[i][cnd_cols[cnd_col]])
         cnd_list[i] = row
 
-    cnd_result = cnd_list
+    cnd_result = deepcopy(cnd_list)
     cnd_result[0].append("MAX_CN")
     #
     for i in range(1, len(cnd_result)):
@@ -201,53 +202,48 @@ def extract_trf_cn(save_path, trf_list):
     print("")
     trf_list[0].append("CONSTRUCTION_NO")
 
-    trf_list[1:len(trf_list)] = list(
-        sorted(trf_list[1:len(trf_list)], key=itemgetter(trf_list[0].index("YEAR_MON_EST"))))
-
-    trf_result = trf_list
+    trf_result = deepcopy(trf_list)
 
     for i in range(1, len(trf_result)):
 
-        if len(list(filter(lambda x:
-                           [x[trf_list[0].index("SHRP_ID")],
-                            x[trf_list[0].index("STATE_CODE")],
-                            x[trf_list[0].index("CONSTRUCTION_NO")]] == [
-                               trf_result[i][trf_result[0].index("SHRP_ID")],
-                               trf_result[i][trf_result[0].index("STATE_CODE")],
-                               trf_result[i][trf_result[0].index("CONSTRUCTION_NO")]] and
+        last_values = list(filter(lambda x:
+                                  [x[trf_list[0].index("SHRP_ID")],
+                                   x[trf_list[0].index("STATE_CODE")],
+                                   x[trf_list[0].index("CONSTRUCTION_NO")]] == [
+                                      trf_result[i][trf_result[0].index("SHRP_ID")],
+                                      trf_result[i][trf_result[0].index("STATE_CODE")],
+                                      trf_result[i][trf_result[0].index("CONSTRUCTION_NO")]] and
 
-                           x[trf_list[0].index("YEAR_MON_EST")] < trf_result[i][
-                               trf_result[0].index("YEAR_MON_EST")], trf_list))) > 0:
+                                  x[trf_list[0].index("YEAR_MON_EST")] <= trf_result[i][
+                                      trf_result[0].index("YEAR_MON_EST")], trf_list))
 
-            last_value = max(filter(lambda x:
-                                    [x[trf_list[0].index("SHRP_ID")],
-                                     x[trf_list[0].index("STATE_CODE")],
-                                     x[trf_list[0].index("CONSTRUCTION_NO")]] == [
-                                        trf_result[i][trf_result[0].index("SHRP_ID")],
-                                        trf_result[i][trf_result[0].index("STATE_CODE")],
-                                        trf_result[i][trf_result[0].index("CONSTRUCTION_NO")]] and
+        if len(last_values) > 0:
+            aadt = [x[trf_result[0].index("AADT")] for x in last_values]
+            aadtt = [x[trf_result[0].index("AADTT")] for x in last_values]
+            kesal = [x[trf_result[0].index("KESAL")] for x in last_values]
 
-                                    x[trf_list[0].index("YEAR_MON_EST")] < trf_result[i][
-                                        trf_result[0].index("YEAR_MON_EST")], trf_list),
-                             key=itemgetter(trf_list[0].index("YEAR_MON_EST")))
-
-            last_at = last_value[trf_list[0].index("AADT")]
-            last_tt = last_value[trf_list[0].index("AADTT")]
-            last_ke = last_value[trf_list[0].index("KESAL")]
-
-            if trf_result[i][trf_result[0].index("AADT")] != "" and last_at != "":
-                trf_result[i][trf_result[0].index("AADT")] = int_float(
-                    trf_result[i][trf_result[0].index("AADT")]) + int_float(last_at)
-            if trf_result[i][trf_result[0].index("AADTT")] != "" and last_tt != "":
-                trf_result[i][trf_result[0].index("AADTT")] = int_float(
-                    trf_result[i][trf_result[0].index("AADTT")]) + int_float(last_tt)
-            if trf_result[i][trf_result[0].index("KESAL")] != "" and last_ke != "":
-                trf_result[i][trf_result[0].index("KESAL")] = int_float(
-                    trf_result[i][trf_result[0].index("KESAL")]) + int_float(last_ke)
+            if trf_result[i][trf_result[0].index("AADT")] != "":
+                trf_result[i][trf_result[0].index("AADT")] = average(aadt) if average(aadt) is not None else 0
+            if trf_result[i][trf_result[0].index("AADTT")] != "":
+                trf_result[i][trf_result[0].index("AADTT")] = average(aadtt) if average(aadtt) is not None else 0
+            if trf_result[i][trf_result[0].index("KESAL")] != "":
+                trf_result[i][trf_result[0].index("KESAL")] = average(kesal) if average(kesal) is not None else 0
 
         sys.stdout.write("\r- [TRF SUM]: %d/%d" % (i, len(trf_result) - 1))
     print("")
     save_csv(save_path, trf_result)
+
+
+def average(p_list):
+    result = count = 0
+    for value in p_list:
+        if value != "":
+            result += int(value)
+            count += 1
+    if count > 0:
+        return result / count
+    else:
+        return None
 
 
 def extract_def(save_path, def_filename, def_sheet="MON_DEFL_DROP_DATA"):
@@ -754,7 +750,7 @@ def str_time(p_time):
         round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
 
 
-if __name__ == '__main__':
+def main():
     # Root directories
     csv_path, xls_path = "./csv", "./xls"
 
@@ -773,8 +769,8 @@ if __name__ == '__main__':
         print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
 
     # Excel input file addresses
-    xls_iri = xls_def = xls_skn = xls_vws = xls_path + "/Bucket_98025.xlsx"
-    xls_trf = xls_snu = xls_cnd = xls_path + "/Bucket_98500.xlsx"
+    xls_iri = xls_def = xls_skn = xls_vws = xls_path + "/Bucket_98691.xlsx"
+    xls_trf = xls_snu = xls_cnd = xls_path + "/Bucket_98691.xlsx"
 
     # CSV output file addresses
     [csv_iri, csv_def, csv_skn,

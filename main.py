@@ -1,9 +1,12 @@
 import sys
 import time
 from datetime import datetime
-from operator import itemgetter
 
 import csv
+import xls2csv
+
+
+# from operator import itemgetter
 
 
 def load_csv(file):
@@ -54,7 +57,7 @@ def int_year(date):
         return int(str(date)[0:4])
 
 
-def biggest_date(d1, d2):
+def date_diff(d1, d2):
     if str(d1)[2:3] == "/":
         # Format: dd/mm/aaaa
         d1 = datetime(int(str(d1)[6:10]), int(str(d1)[3:5]), int(str(d1)[0:2]))
@@ -69,18 +72,13 @@ def biggest_date(d1, d2):
         # Format: yyyy-mm-dd
         d2 = datetime(int(str(d2)[0:4]), int(str(d2)[5:7]), int(str(d2)[8:10]))
 
-    if d1 > d2:
-        value = 1
-    elif d1 < d2:
-        value = 2
-    else:
-        value = 0
-
-    return value
+    return (d1 - d2).days
 
 
 if __name__ == '__main__':
     start_time = time.time()
+
+    # xls2csv.main()
 
     print("(i) Loading CSV files...")
 
@@ -98,289 +96,204 @@ if __name__ == '__main__':
 
     limit = len(csv_pci)
 
-    # TODO : PCI
+    # == PCI ==
 
     for i in range(1, limit):
 
         if len(csv_pci[i][csv_pci[0].index("SHRP_ID")]) < 4:
             csv_pci[i][csv_pci[0].index("SHRP_ID")] = "0" + csv_pci[i][csv_pci[0].index("SHRP_ID")]
 
-    # TODO : IRI
+    # == IRI ==
 
-    csv_pci[0] = csv_pci[0] + ["MRI"]
-
+    csv_pci[0].extend(["IRI", "IRI_YEAR_DIF"])
     count = 0
 
     for i in range(1, limit):
+        # Lista ordenada de valores por diferencia de fechas
+        nearest = sorted(list(filter(lambda x:
+                                     [x[csv_iri[0].index("SHRP_ID")],
+                                      x[csv_iri[0].index("STATE_CODE")],
+                                      x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
+                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_iri)),
+                         key=lambda x: abs(date_diff(x[csv_iri[0].index("VISIT_DATE")],
+                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
 
-        # Coge la fecha inferior inmediatamente más cercana
-        if len(list(filter(lambda x:
-                           [x[csv_iri[0].index("SHRP_ID")],
-                            x[csv_iri[0].index("STATE_CODE")],
-                            x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
-                               csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                               csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                               csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                           biggest_date(x[csv_iri[0].index("VISIT_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_iri))) > 0:
-            last_value = max(filter(lambda x:
-                                    [x[csv_iri[0].index("SHRP_ID")],
-                                     x[csv_iri[0].index("STATE_CODE")],
-                                     x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_iri[0].index("VISIT_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_iri),
-                             key=itemgetter(csv_iri[0].index("VISIT_DATE")))
-            csv_pci[i].append(last_value[csv_iri[0].index("MRI")])
-            count += 1
-
-        # Coge la fecha inferior inmediatamente más cercana
-        elif len(list(filter(lambda x:
-                             [x[csv_iri[0].index("SHRP_ID")],
-                              x[csv_iri[0].index("STATE_CODE")],
-                              x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
-                                 csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                 csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                 csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                             biggest_date(x[csv_iri[0].index("VISIT_DATE")],
-                                          csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_iri))) > 0:
-            last_value = min(filter(lambda x:
-                                    [x[csv_iri[0].index("SHRP_ID")],
-                                     x[csv_iri[0].index("STATE_CODE")],
-                                     x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_iri[0].index("VISIT_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_iri),
-                             key=itemgetter(csv_iri[0].index("VISIT_DATE")))
-            csv_pci[i].append(last_value[csv_iri[0].index("MRI")])
+        # Añade el índice y diferencia de fechas del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].append(nearest[0][csv_iri[0].index("MRI")])
+            csv_pci[i].append(date_diff(nearest[0][csv_iri[0].index("VISIT_DATE")],
+                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
             count += 1
         else:
-            csv_pci[i].append("")
+            csv_pci[i].extend([""] * 2)
         sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : DEF
+    # == DEF ==
 
-    csv_pci[0] = csv_pci[0] + csv_def[0][4:len(csv_def[0])]
-
+    csv_pci[0].extend(csv_def[0][4:len(csv_def[0])])
+    csv_pci[0].append("DEF_YEAR_DIF")
     count = 0
 
     for i in range(1, limit):
 
-        # Coge la fecha inferior inmediatamente más cercana
-        if len(list(filter(lambda x:
-                           [x[csv_def[0].index("SHRP_ID")],
-                            x[csv_def[0].index("STATE_CODE")],
-                            x[csv_def[0].index("CONSTRUCTION_NO")]] == [
-                               csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                               csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                               csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                           biggest_date(x[csv_def[0].index("TEST_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_def))) > 0:
-            last_value = max(filter(lambda x:
-                                    [x[csv_def[0].index("SHRP_ID")],
-                                     x[csv_def[0].index("STATE_CODE")],
-                                     x[csv_def[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_def[0].index("TEST_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_def),
-                             key=itemgetter(csv_def[0].index("TEST_DATE")))
-            csv_pci[i] = csv_pci[i] + last_value[4:len(last_value)]
-            count += 1
-        # Coge la fecha inferior inmediatamente más cercana
-        elif len(list(filter(lambda x:
-                             [x[csv_def[0].index("SHRP_ID")],
-                              x[csv_def[0].index("STATE_CODE")],
-                              x[csv_def[0].index("CONSTRUCTION_NO")]] == [
-                                 csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                 csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                 csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                             biggest_date(x[csv_def[0].index("TEST_DATE")],
-                                          csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_def))) > 0:
-            last_value = min(filter(lambda x:
-                                    [x[csv_def[0].index("SHRP_ID")],
-                                     x[csv_def[0].index("STATE_CODE")],
-                                     x[csv_def[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_def[0].index("TEST_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_def),
-                             key=itemgetter(csv_def[0].index("TEST_DATE")))
-            csv_pci[i] = csv_pci[i] + last_value[4:len(last_value)]
+        # Lista ordenada de valores por diferencia de fechas
+        nearest = sorted(list(filter(lambda x:
+                                     [x[csv_def[0].index("SHRP_ID")],
+                                      x[csv_def[0].index("STATE_CODE")],
+                                      x[csv_def[0].index("CONSTRUCTION_NO")]] == [
+                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_def)),
+                         key=lambda x: abs(date_diff(x[csv_def[0].index("TEST_DATE")],
+                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
+
+        # Añade el índice y diferencia de fechas del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].extend(nearest[0][4:len(nearest[0])])
+            csv_pci[i].append(date_diff(nearest[0][csv_def[0].index("TEST_DATE")],
+                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
             count += 1
         else:
-            csv_pci[i] = csv_pci[i] + [""] * 6
+            csv_pci[i].extend([""] * 7)
         sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : SKN
+    # == SKN ==
 
-    csv_pci[0] = csv_pci[0] + ["FRICTION"]
-
+    csv_pci[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
     count = 0
 
     for i in range(1, limit):
 
-        # Coge la fecha inferior inmediatamente más cercana
-        if len(list(filter(lambda x:
-                           [x[csv_skn[0].index("SHRP_ID")],
-                            x[csv_skn[0].index("STATE_CODE")],
-                            x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
-                               csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                               csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                               csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                           biggest_date(x[csv_skn[0].index("FRICTION_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_skn))) > 0:
-            last_value = max(filter(lambda x:
-                                    [x[csv_skn[0].index("SHRP_ID")],
-                                     x[csv_skn[0].index("STATE_CODE")],
-                                     x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_skn[0].index("FRICTION_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 2, csv_skn),
-                             key=itemgetter(csv_skn[0].index("FRICTION_DATE")))
-            csv_pci[i].append(last_value[csv_skn[0].index("FRICTION_NO_END")])
-            count += 1
+        # Lista ordenada de valores por diferencia de fechas
+        nearest = sorted(list(filter(lambda x:
+                                     [x[csv_skn[0].index("SHRP_ID")],
+                                      x[csv_skn[0].index("STATE_CODE")],
+                                      x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
+                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_skn)),
+                         key=lambda x: abs(date_diff(x[csv_skn[0].index("FRICTION_DATE")],
+                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
 
-        # Coge la fecha inferior inmediatamente más cercana
-        elif len(list(filter(lambda x:
-                             [x[csv_skn[0].index("SHRP_ID")],
-                              x[csv_skn[0].index("STATE_CODE")],
-                              x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
-                                 csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                 csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                 csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                             biggest_date(x[csv_skn[0].index("FRICTION_DATE")],
-                                          csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_skn))) > 0:
-            last_value = min(filter(lambda x:
-                                    [x[csv_skn[0].index("SHRP_ID")],
-                                     x[csv_skn[0].index("STATE_CODE")],
-                                     x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
-                                        csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                        csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                        csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]] and
-                                    biggest_date(x[csv_skn[0].index("FRICTION_DATE")],
-                                                 csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) == 1, csv_skn),
-                             key=itemgetter(csv_skn[0].index("FRICTION_DATE")))
-            csv_pci[i].append(last_value[csv_skn[0].index("FRICTION_NO_END")])
+        # Añade el índice y diferencia de fechas del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].append(nearest[0][csv_skn[0].index("FRICTION_NO_END")])
+            csv_pci[i].append(date_diff(nearest[0][csv_skn[0].index("FRICTION_DATE")],
+                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
             count += 1
-
         else:
-            csv_pci[i].append("")
-        sys.stdout.write("\r- SKN %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+            csv_pci[i].extend([""] * 2)
+        sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : CND
+    # == CND ==
 
-    csv_pci[0] = csv_pci[0] + ["Pa"]
-
+    csv_pci[0].append("Pa")
     count = 0
 
     for i in range(1, limit):
-        status = False
-        for j in range(1, len(csv_cnd)):
-            if [csv_cnd[j][csv_cnd[0].index("SHRP_ID")],
-                csv_cnd[j][csv_cnd[0].index("STATE_CODE")],
-                csv_cnd[j][csv_cnd[0].index("CONSTRUCTION_NO")]] == [csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                                                     csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                                                     csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]]:
-                # Cálculo de p_a
-                csv_pci[i].append(int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) - int_year(
-                    csv_cnd[j][csv_cnd[0].index("CN_ASSIGN_DATE")]))
-                count += 1
-                status = True
-                break
-        if not status:
+
+        # Lista de valores
+        nearest = list(filter(lambda x:
+                              [x[csv_cnd[0].index("SHRP_ID")],
+                               x[csv_cnd[0].index("STATE_CODE")],
+                               x[csv_cnd[0].index("CONSTRUCTION_NO")]] == [
+                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                  csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_cnd))
+
+        # Añade la diferencia de fechas del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].append(date_diff(csv_pci[i][csv_pci[0].index("SURVEY_DATE")],
+                                        nearest[0][csv_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
+            count += 1
+        else:
             csv_pci[i].append("")
 
         sys.stdout.write("\r- CND %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : TRF
+    # == TRF ==
 
-    csv_pci[0] = csv_pci[0] + csv_trf[0][3:6]
-
+    csv_pci[0].extend(csv_trf[0][3:6])
     count = 0
 
     for i in range(1, limit):
-        status = False
-        # Coge la fecha inferior inmediatamente más cercana
-        for j in range(1, len(csv_trf)):
-            if [csv_trf[j][csv_trf[0].index("SHRP_ID")],
-                csv_trf[j][csv_trf[0].index("STATE_CODE")],
-                int(csv_trf[j][csv_trf[0].index("YEAR_MON_EST")])] == [csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                                                       csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                                                       int_year(csv_pci[i][
-                                                                                    csv_pci[0].index("SURVEY_DATE")])]:
-                csv_pci[i] = csv_pci[i] + csv_trf[j][3:6]
-                count += 1
-                status = True
-                break
 
-        if not status:
-            csv_pci[i] = csv_pci[i] + [""] * 3
+        # Lista de valores
+        nearest = list(filter(lambda x:
+                              [x[csv_trf[0].index("SHRP_ID")],
+                               x[csv_trf[0].index("STATE_CODE")],
+                               int(x[csv_trf[0].index("YEAR_MON_EST")])] == [
+                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                  int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")])], csv_trf[1:]))
+
+        # Añade el índice del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].extend(nearest[0][3:6])
+            count += 1
+        else:
+            csv_pci[i].extend([""] * 3)
 
         sys.stdout.write("\r- TRF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : SNU
+    # == SNU ==
 
-    csv_pci[0] = csv_pci[0] + ["SN"]
-
+    csv_pci[0].append("SN")
     count = 0
 
     for i in range(1, limit):
-        status = False
-        for j in range(1, len(csv_snu)):
-            if [csv_snu[j][csv_snu[0].index("SHRP_ID")],
-                csv_snu[j][csv_snu[0].index("STATE_CODE")],
-                csv_snu[j][csv_snu[0].index("CONSTRUCTION_NO")]] == [csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                                                     csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                                                     csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]]:
-                #
-                csv_pci[i].append(csv_snu[j][csv_snu[0].index("SN_VALUE")])
-                count += 1
-                status = True
-                break
-        if not status:
+
+        # Lista de valores
+        nearest = list(filter(lambda x:
+                              [x[csv_snu[0].index("SHRP_ID")],
+                               x[csv_snu[0].index("STATE_CODE")],
+                               x[csv_snu[0].index("CONSTRUCTION_NO")]] == [
+                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                  csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_snu))
+
+        # Añade el índice del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].append(nearest[0][csv_snu[0].index("SN_VALUE")])
+            count += 1
+        else:
             csv_pci[i].append("")
 
         sys.stdout.write("\r- SNU %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
 
-    # TODO : VWS
+    # == VWS ==
 
-    csv_pci[0] = csv_pci[0] + csv_vws[0][4:len(csv_vws[0])]
-
+    csv_pci[0].extend(csv_vws[0][4:len(csv_vws[0])])
     count = 0
 
     for i in range(1, limit):
-        status = False
-        # Coge la fecha inferior inmediatamente más cercana
-        for j in range(1, len(csv_vws)):
-            if [csv_vws[j][csv_vws[0].index("SHRP_ID")],
-                csv_vws[j][csv_vws[0].index("STATE_CODE")],
-                int(csv_vws[j][csv_vws[0].index("YEAR")]),
-                int(csv_vws[j][csv_vws[0].index("MONTH")])] == [csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                                                csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                                                int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
-                                                                int_month(csv_pci[i][csv_pci[0].index("SURVEY_DATE")])]:
-                csv_pci[i] = csv_pci[i] + csv_vws[j][4:len(csv_vws[j])]
-                count += 1
-                status = True
-                break
 
-        if not status:
-            csv_pci[i] = csv_pci[i] + [""] * 16
+        # Lista de valores
+        nearest = list(filter(lambda x:
+                              [x[csv_vws[0].index("SHRP_ID")],
+                               x[csv_vws[0].index("STATE_CODE")],
+                               int(x[csv_vws[0].index("YEAR")]),
+                               int(x[csv_vws[0].index("MONTH")])] == [
+                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                  int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
+                                  int_month(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
+                              ], csv_vws[1:]))
+
+        # Añade el índice del primer valor de la lista
+        if len(nearest) > 0:
+            csv_pci[i].extend(nearest[0][4:len(nearest[0])])
+            count += 1
+        else:
+            csv_pci[i].extend([""] * 16)
 
         sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, limit - 1, count))
     print("")
