@@ -1,3 +1,5 @@
+import os
+import shutil
 import sys
 import time
 from datetime import datetime
@@ -6,23 +8,20 @@ import csv
 import xls2csv
 
 
-# from operator import itemgetter
-
-
-def load_csv(file):
-    with open(file, 'r', newline='') as f:
+def load_csv(p_path):
+    with open(p_path, 'r', newline='') as f:
         reader = csv.reader(f, delimiter=';')
         data = list(reader)
     return data
 
 
 def save_csv(p_path, p_data):
-    for k in range(1, len(p_data)):
-        p_data[k] = row_to_str(p_data[k])
+    for n in range(1, len(p_data)):
+        p_data[n] = row_to_str(p_data[n])
 
         # Fix zero prefix in SHRP_ID
-        if "SHRP_ID" in p_data[0] and len(p_data[k][p_data[0].index("SHRP_ID")]) < 4:
-            p_data[k][p_data[0].index("SHRP_ID")] = "0" + p_data[k][p_data[0].index("SHRP_ID")]
+        if "SHRP_ID" in p_data[0] and len(p_data[n][p_data[0].index("SHRP_ID")]) < 4:
+            p_data[n][p_data[0].index("SHRP_ID")] = "0" + p_data[n][p_data[0].index("SHRP_ID")]
 
     with open(p_path, 'w', newline='') as f:
         write = csv.writer(f, delimiter=';')
@@ -32,10 +31,10 @@ def save_csv(p_path, p_data):
 
 
 def row_to_str(p_row):
-    for k in range(0, len(p_row)):
-        p_row[k] = str(p_row[k])  # Convert data to string
-        p_row[k] = p_row[k].replace(".", ",")  # Replace dots with commas
-        p_row[k] = p_row[k].replace("nan", "")  # Replace "nan" with void
+    for n in range(0, len(p_row)):
+        p_row[n] = str(p_row[n])  # Convert data to string
+        p_row[n] = p_row[n].replace(".", ",")  # Replace dots with commas
+        p_row[n] = p_row[n].replace("nan", "")  # Replace "nan" with void
     return p_row
 
 
@@ -78,229 +77,251 @@ def date_diff(d1, d2):
 if __name__ == '__main__':
     start_time = time.time()
 
-    # xls2csv.main()
+    xls_list = []
 
-    print("(i) Loading CSV files...")
+    for file in os.listdir("./xls"):
+        if file.endswith(".xlsx"):
+            xls_list.append(os.path.join("./xls", file).replace("\\", "/"))
 
-    csv_pci = load_csv("./csv/pci.csv")  # (PCI) Pavement Condition Index
-    csv_iri = load_csv("./csv/iri.csv")  # (IRI) International Roughness Index
-    csv_def = load_csv("./csv/def.csv")  # (DEF) Deflections
-    csv_skn = load_csv("./csv/skn.csv")  # (SKN) Skid Number
+    for k in range(0, len(xls_list)):
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("(%s/%s) Current file: \"%s\"" % (k + 1, len(xls_list), xls_list[k]))
 
-    csv_cnd = load_csv("./csv/cnd.csv")  # (CND) Construction Number Date
-    csv_trf = load_csv("./csv/trf.csv")  # (TRF) Traffic
-    csv_snu = load_csv("./csv/snu.csv")  # (SNU) Structural Number
-    csv_vws = load_csv("./csv/vws.csv")  # (VWS) Virtual Weather Station
+        csv_path = "./csv/" + os.path.basename(xls_list[k])[0:-5] + "/"
 
-    print(" ✓  CSV files loaded in", '%.3f' % (time.time() - start_time), "seconds\n")
+        try:
+            xls2csv.main(xls_list[k], csv_path, True)
+        except BaseException as e:
+            print("(!) Error with file: ", e)
+            continue
 
-    limit = len(csv_pci)
+        save_path = "./res/" + os.path.basename(xls_list[k])[0:-5] + ".csv"
+        shutil.copyfile("./csv/pci.csv", save_path)
 
-    # == PCI ==
+        print("(i) Loading CSV files...")
 
-    for i in range(1, limit):
+        csv_pci = load_csv(save_path)  # (PCI) Pavement Condition Index
+        csv_iri = load_csv(csv_path + "/iri.csv")  # (IRI) International Roughness Index
+        csv_def = load_csv(csv_path + "/def.csv")  # (DEF) Deflections
+        csv_skn = load_csv(csv_path + "/skn.csv")  # (SKN) Skid Number
 
-        if len(csv_pci[i][csv_pci[0].index("SHRP_ID")]) < 4:
-            csv_pci[i][csv_pci[0].index("SHRP_ID")] = "0" + csv_pci[i][csv_pci[0].index("SHRP_ID")]
+        csv_cnd = load_csv(csv_path + "/cnd.csv")  # (CND) Construction Number Date
+        csv_trf = load_csv(csv_path + "/trf.csv")  # (TRF) Traffic
+        csv_snu = load_csv(csv_path + "/snu.csv")  # (SNU) Structural Number
+        csv_vws = load_csv(csv_path + "/vws.csv")  # (VWS) Virtual Weather Station
 
-    # == IRI ==
+        print(" ✓  CSV files loaded in", '%.3f' % (time.time() - start_time), "seconds\n")
 
-    csv_pci[0].extend(["IRI", "IRI_YEAR_DIF"])
-    count = 0
+        # == PCI ==
 
-    for i in range(1, limit):
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[csv_iri[0].index("SHRP_ID")],
-                                      x[csv_iri[0].index("STATE_CODE")],
-                                      x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
-                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_iri)),
-                         key=lambda x: abs(date_diff(x[csv_iri[0].index("VISIT_DATE")],
-                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
+        csv_pci = [csv_pci[0]] + (list(filter(lambda x:
+                                              x[csv_pci[0].index("STATE_CODE")] ==
+                                              csv_iri[1][csv_iri[0].index("STATE_CODE")], csv_pci)))
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].append(nearest[0][csv_iri[0].index("MRI")])
-            csv_pci[i].append(date_diff(nearest[0][csv_iri[0].index("VISIT_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
-            count += 1
-        else:
-            csv_pci[i].extend([""] * 2)
-        sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+        limit = len(csv_pci)
 
-    # == DEF ==
+        for i in range(1, limit):
 
-    csv_pci[0].extend(csv_def[0][4:len(csv_def[0])])
-    csv_pci[0].append("DEF_YEAR_DIF")
-    count = 0
+            if len(csv_pci[i][csv_pci[0].index("SHRP_ID")]) < 4:
+                csv_pci[i][csv_pci[0].index("SHRP_ID")] = "0" + csv_pci[i][csv_pci[0].index("SHRP_ID")]
 
-    for i in range(1, limit):
+        # == IRI ==
 
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[csv_def[0].index("SHRP_ID")],
-                                      x[csv_def[0].index("STATE_CODE")],
-                                      x[csv_def[0].index("CONSTRUCTION_NO")]] == [
-                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_def)),
-                         key=lambda x: abs(date_diff(x[csv_def[0].index("TEST_DATE")],
-                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
+        csv_pci[0].extend(["IRI", "IRI_YEAR_DIF"])
+        count = 0
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].extend(nearest[0][4:len(nearest[0])])
-            csv_pci[i].append(date_diff(nearest[0][csv_def[0].index("TEST_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
-            count += 1
-        else:
-            csv_pci[i].extend([""] * 7)
-        sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+        for i in range(1, limit):
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[csv_iri[0].index("SHRP_ID")],
+                                          x[csv_iri[0].index("STATE_CODE")],
+                                          x[csv_iri[0].index("CONSTRUCTION_NO")]] == [
+                                             csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                             csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                             csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_iri)),
+                             key=lambda x: abs(date_diff(x[csv_iri[0].index("VISIT_DATE")],
+                                                         csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
 
-    # == SKN ==
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].append(nearest[0][csv_iri[0].index("MRI")])
+                csv_pci[i].append(date_diff(nearest[0][csv_iri[0].index("VISIT_DATE")],
+                                            csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) / 365)
+                count += 1
+            else:
+                csv_pci[i].extend([""] * 2)
+            sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    csv_pci[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
-    count = 0
+        # == DEF ==
 
-    for i in range(1, limit):
+        csv_pci[0].extend(csv_def[0][4:len(csv_def[0])])
+        csv_pci[0].append("DEF_YEAR_DIF")
+        count = 0
 
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[csv_skn[0].index("SHRP_ID")],
-                                      x[csv_skn[0].index("STATE_CODE")],
-                                      x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
-                                         csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                         csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                         csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_skn)),
-                         key=lambda x: abs(date_diff(x[csv_skn[0].index("FRICTION_DATE")],
-                                                     csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
+        for i in range(1, limit):
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].append(nearest[0][csv_skn[0].index("FRICTION_NO_END")])
-            csv_pci[i].append(date_diff(nearest[0][csv_skn[0].index("FRICTION_DATE")],
-                                        csv_pci[i][csv_pci[0].index("SURVEY_DATE")])/365)
-            count += 1
-        else:
-            csv_pci[i].extend([""] * 2)
-        sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[csv_def[0].index("SHRP_ID")],
+                                          x[csv_def[0].index("STATE_CODE")],
+                                          x[csv_def[0].index("CONSTRUCTION_NO")]] == [
+                                             csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                             csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                             csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_def)),
+                             key=lambda x: abs(date_diff(x[csv_def[0].index("TEST_DATE")],
+                                                         csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
 
-    # == CND ==
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].extend(nearest[0][4:len(nearest[0])])
+                csv_pci[i].append(date_diff(nearest[0][csv_def[0].index("TEST_DATE")],
+                                            csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) / 365)
+                count += 1
+            else:
+                csv_pci[i].extend([""] * 7)
+            sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    csv_pci[0].append("Pa")
-    count = 0
+        # == SKN ==
 
-    for i in range(1, limit):
+        csv_pci[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
+        count = 0
 
-        # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[csv_cnd[0].index("SHRP_ID")],
-                               x[csv_cnd[0].index("STATE_CODE")],
-                               x[csv_cnd[0].index("CONSTRUCTION_NO")]] == [
-                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                  csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_cnd))
+        for i in range(1, limit):
 
-        # Añade la diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].append(date_diff(csv_pci[i][csv_pci[0].index("SURVEY_DATE")],
-                                        nearest[0][csv_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
-            count += 1
-        else:
-            csv_pci[i].append("")
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[csv_skn[0].index("SHRP_ID")],
+                                          x[csv_skn[0].index("STATE_CODE")],
+                                          x[csv_skn[0].index("CONSTRUCTION_NO")]] == [
+                                             csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                             csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                             csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_skn)),
+                             key=lambda x: abs(date_diff(x[csv_skn[0].index("FRICTION_DATE")],
+                                                         csv_pci[i][csv_pci[0].index("SURVEY_DATE")])))
 
-        sys.stdout.write("\r- CND %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].append(nearest[0][csv_skn[0].index("FRICTION_NO_END")])
+                csv_pci[i].append(date_diff(nearest[0][csv_skn[0].index("FRICTION_DATE")],
+                                            csv_pci[i][csv_pci[0].index("SURVEY_DATE")]) / 365)
+                count += 1
+            else:
+                csv_pci[i].extend([""] * 2)
+            sys.stdout.write("\r- SKN %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    # == TRF ==
+        # == CND ==
 
-    csv_pci[0].extend(csv_trf[0][3:6])
-    count = 0
+        csv_pci[0].append("Pa")
+        count = 0
 
-    for i in range(1, limit):
+        for i in range(1, limit):
 
-        # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[csv_trf[0].index("SHRP_ID")],
-                               x[csv_trf[0].index("STATE_CODE")],
-                               int(x[csv_trf[0].index("YEAR_MON_EST")])] == [
-                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                  int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")])], csv_trf[1:]))
+            # Lista de valores
+            nearest = list(filter(lambda x:
+                                  [x[csv_cnd[0].index("SHRP_ID")],
+                                   x[csv_cnd[0].index("STATE_CODE")],
+                                   x[csv_cnd[0].index("CONSTRUCTION_NO")]] == [
+                                      csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                      csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                      csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_cnd))
 
-        # Añade el índice del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].extend(nearest[0][3:6])
-            count += 1
-        else:
-            csv_pci[i].extend([""] * 3)
+            # Añade la diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].append(date_diff(csv_pci[i][csv_pci[0].index("SURVEY_DATE")],
+                                            nearest[0][csv_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
+                count += 1
+            else:
+                csv_pci[i].append("")
 
-        sys.stdout.write("\r- TRF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            sys.stdout.write("\r- CND %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    # == SNU ==
+        # == TRF ==
 
-    csv_pci[0].append("SN")
-    count = 0
+        csv_pci[0].extend(csv_trf[0][3:6])
+        count = 0
 
-    for i in range(1, limit):
+        for i in range(1, limit):
 
-        # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[csv_snu[0].index("SHRP_ID")],
-                               x[csv_snu[0].index("STATE_CODE")],
-                               x[csv_snu[0].index("CONSTRUCTION_NO")]] == [
-                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                  csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_snu))
+            # Lista de valores
+            nearest = list(filter(lambda x:
+                                  [x[csv_trf[0].index("SHRP_ID")],
+                                   x[csv_trf[0].index("STATE_CODE")],
+                                   int(x[csv_trf[0].index("YEAR_MON_EST")])] == [
+                                      csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                      csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                      int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")])], csv_trf[1:]))
 
-        # Añade el índice del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].append(nearest[0][csv_snu[0].index("SN_VALUE")])
-            count += 1
-        else:
-            csv_pci[i].append("")
+            # Añade el índice del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].extend(nearest[0][3:6])
+                count += 1
+            else:
+                csv_pci[i].extend([""] * 3)
 
-        sys.stdout.write("\r- SNU %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            sys.stdout.write("\r- TRF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    # == VWS ==
+        # == SNU ==
 
-    csv_pci[0].extend(csv_vws[0][4:len(csv_vws[0])])
-    count = 0
+        csv_pci[0].append("SN")
+        count = 0
 
-    for i in range(1, limit):
+        for i in range(1, limit):
 
-        # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[csv_vws[0].index("SHRP_ID")],
-                               x[csv_vws[0].index("STATE_CODE")],
-                               int(x[csv_vws[0].index("YEAR")]),
-                               int(x[csv_vws[0].index("MONTH")])] == [
-                                  csv_pci[i][csv_pci[0].index("SHRP_ID")],
-                                  csv_pci[i][csv_pci[0].index("STATE_CODE")],
-                                  int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
-                                  int_month(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
-                              ], csv_vws[1:]))
+            # Lista de valores
+            nearest = list(filter(lambda x:
+                                  [x[csv_snu[0].index("SHRP_ID")],
+                                   x[csv_snu[0].index("STATE_CODE")],
+                                   x[csv_snu[0].index("CONSTRUCTION_NO")]] == [
+                                      csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                      csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                      csv_pci[i][csv_pci[0].index("CONSTRUCTION_NO")]], csv_snu))
 
-        # Añade el índice del primer valor de la lista
-        if len(nearest) > 0:
-            csv_pci[i].extend(nearest[0][4:len(nearest[0])])
-            count += 1
-        else:
-            csv_pci[i].extend([""] * 16)
+            # Añade el índice del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].append(nearest[0][csv_snu[0].index("SN_VALUE")])
+                count += 1
+            else:
+                csv_pci[i].append("")
 
-        sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            sys.stdout.write("\r- SNU %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
 
-    save_path = "./res/" + datetime.now().strftime("(%d-%m-%Y_%H-%M-%S)") + ".csv"
-    save_csv(save_path, csv_pci)
+        # == VWS ==
 
-    print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
+        csv_pci[0].extend(csv_vws[0][4:len(csv_vws[0])])
+        count = 0
+
+        for i in range(1, limit):
+
+            # Lista de valores
+            nearest = list(filter(lambda x:
+                                  [x[csv_vws[0].index("SHRP_ID")],
+                                   x[csv_vws[0].index("STATE_CODE")],
+                                   int(x[csv_vws[0].index("YEAR")]),
+                                   int(x[csv_vws[0].index("MONTH")])] == [
+                                      csv_pci[i][csv_pci[0].index("SHRP_ID")],
+                                      csv_pci[i][csv_pci[0].index("STATE_CODE")],
+                                      int_year(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
+                                      int_month(csv_pci[i][csv_pci[0].index("SURVEY_DATE")]),
+                                  ], csv_vws[1:]))
+
+            # Añade el índice del primer valor de la lista
+            if len(nearest) > 0:
+                csv_pci[i].extend(nearest[0][4:len(nearest[0])])
+                count += 1
+            else:
+                csv_pci[i].extend([""] * 16)
+
+            sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        print("")
+
+        save_csv(save_path, csv_pci)
+
+    print(" ✓  xls2csv finished in", '%.3f' % (time.time() - start_time), "seconds")
 
     exit(0)

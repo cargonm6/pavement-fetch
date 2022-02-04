@@ -10,6 +10,8 @@ import pandas
 
 import csv
 
+global_csv_path = "./csv/"
+
 
 def extract_cnd(save_path, cnd_filename, cnd_sheet="EXPERIMENT_SECTION"):
     cnd_cols = {
@@ -155,7 +157,7 @@ def int_float(p_value):
 
 
 def extract_trf_cn(save_path, trf_list):
-    cnd_list = load_csv("./csv/cnd.csv")
+    cnd_list = load_csv(global_csv_path + "cnd.csv")
 
     for i in range(1, len(trf_list)):
         trf_list[i] = row_to_str(trf_list[i])
@@ -665,6 +667,53 @@ def extract_vws(save_path, vws_filename):
     vws_results = vws_add_values(vws_hu_a_list, vws_results, False, ["MAX_ANN_HUM_AVG",
                                                                      "MIN_ANN_HUM_AVG"])
 
+    # CLIMATIC ZONES
+    vws_results[0].append("CLIMATIC ZONE")
+
+    for i in range(1, len(vws_results)):
+        # Lista de valores con igual ID
+        nearest = list(filter(lambda x:
+                              [x[vws_results[0].index("SHRP_ID")],
+                               x[vws_results[0].index("STATE_CODE")]] == [
+                                  vws_results[i][vws_results[0].index("SHRP_ID")],
+                                  vws_results[i][vws_results[0].index("STATE_CODE")]] and
+                              x[vws_results[0].index("MONTH")] in [6, 7, 8], vws_results))
+
+        if len(nearest) > 0:
+            vws_temp = count_temp = 0
+            vws_prec = count_prec = 0
+
+            for j in range(0, len(nearest)):
+                # Sumamos todas las precipitaciones anuales no nulas
+                if nearest[j][vws_results[0].index("TOTAL_ANN_PRECIP")] != "":
+                    vws_prec += nearest[j][vws_results[0].index("TOTAL_ANN_PRECIP")]
+                    count_prec += 1
+                # Sumamos todas las temperaturas mensuales no nulas
+                if nearest[j][vws_results[0].index("MEAN_MON_TEMP_AVG")] != "":
+                    vws_temp += nearest[j][vws_results[0].index("MEAN_MON_TEMP_AVG")]
+                    count_temp += 1
+
+            vws_temp = vws_temp / count_temp
+            vws_prec = vws_prec / count_prec
+
+            if 11 <= vws_temp <= 16:
+                vws_temp = "TEMPLADA"
+            elif 16 < vws_temp < 23:
+                vws_temp = "MEDIA"
+            elif 23 <= vws_temp <= 29:
+                vws_temp = "CÁLIDA"
+            else:
+                vws_temp = "FUERA DE RANGO"
+
+            if vws_prec < 600:
+                vws_prec = "POCO LLUVIOSA"
+            else:
+                vws_prec = "LLUVIOSA"
+
+            vws_results[i].append(vws_prec + " - " + vws_temp)
+
+        sys.stdout.write("\r- [VWS] ZONE: %d/%d" % (i, len(vws_results) - 1))
+    print("")
     # Save to CSV
     save_csv(save_path, vws_results)
 
@@ -750,12 +799,12 @@ def str_time(p_time):
         round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
 
 
-def main():
-    # Root directories
-    csv_path, xls_path = "./csv", "./xls"
+def main(xls_file, csv_path, question=False):
+    global global_csv_path
+    global_csv_path = csv_path
 
-    if not os.path.isdir(xls_path):
-        print("\U000026D4 The input directory \"%s\" does not exist. " % xls_path)
+    if not os.path.isfile(xls_file):
+        print("\U000026D4 The input file \"%s\" does not exist. " % xls_file)
         exit(1)
 
     if not os.path.isdir(csv_path):
@@ -768,19 +817,11 @@ def main():
     else:
         print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
 
-    # Excel input file addresses
-    xls_iri = xls_def = xls_skn = xls_vws = xls_path + "/Bucket_98691.xlsx"
-    xls_trf = xls_snu = xls_cnd = xls_path + "/Bucket_98691.xlsx"
-
     # CSV output file addresses
-    [csv_iri, csv_def, csv_skn,
-     csv_vws, csv_trf, csv_snu, csv_cnd] = [csv_path + s for s in ["/iri.csv", "/def.csv", "/skn.csv",
-                                                                   "/vws.csv", "/trf.csv", "/snu.csv", "/cnd.csv"]]
+    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "vws.csv", "snu.csv", "cnd.csv", "trf.csv"]]
 
-    question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
-
-    csv_tables = [csv_iri, csv_def, csv_skn, csv_vws, csv_snu, csv_cnd, csv_trf]
-    xls_tables = [xls_iri, xls_def, xls_skn, xls_vws, xls_snu, xls_cnd, xls_trf]
+    if not question:
+        question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
 
     total_time = 0
 
@@ -789,17 +830,17 @@ def main():
                 "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
             start_time = time.time()
 
-            extract_iri(csv_tables[k], xls_tables[k]) if k == 0 else 0
-            extract_def(csv_tables[k], xls_tables[k]) if k == 1 else 0
-            extract_skn(csv_tables[k], xls_tables[k]) if k == 2 else 0
-            extract_vws(csv_tables[k], xls_tables[k]) if k == 3 else 0
-            extract_snu(csv_tables[k], xls_tables[k]) if k == 4 else 0
-            extract_cnd(csv_tables[k], xls_tables[k]) if k == 5 else 0
-            extract_trf(csv_tables[k], xls_tables[k]) if k == 6 else 0
+            extract_iri(csv_tables[k], xls_file) if k == 0 else 0
+            extract_def(csv_tables[k], xls_file) if k == 1 else 0
+            extract_skn(csv_tables[k], xls_file) if k == 2 else 0
+            extract_vws(csv_tables[k], xls_file) if k == 3 else 0
+            extract_snu(csv_tables[k], xls_file) if k == 4 else 0
+            extract_cnd(csv_tables[k], xls_file) if k == 5 else 0
+            extract_trf(csv_tables[k], xls_file) if k == 6 else 0
 
             partial_time = time.time() - start_time
             total_time += partial_time
-            print("\U00002BA1 File \"%s\" converted in \"%s\" (%s)\n" % (
-                csv_tables[k], xls_tables[k], str_time(partial_time)))
+            print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
+                csv_tables[k], xls_file, str_time(partial_time)))
 
     print("\U0001F6C8 Program finished in %s" % str_time(total_time))
