@@ -1,3 +1,4 @@
+import calendar
 import math
 import os
 import statistics
@@ -8,11 +9,13 @@ from copy import deepcopy
 from typing import List, Any
 
 import pandas
+import pandas as pd
 
 import csv
 
 global_csv_path = "./csv/"
 
+# TODO
 """
 extract_iri OK
 extract_def OK
@@ -20,7 +23,7 @@ extract_skn
 extract_vws
 extract_snu
 extract_cnd
-extract_trf
+extract_trf OK
 """
 
 
@@ -115,6 +118,14 @@ def extract_iri(p_path, p_file, p_sheet="MON_HSS_PROFILE_SECTION"):
 
 
 def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
+    """
+    Extract, prepare and unify data from LTPP deflections table
+
+    :param p_path: path of output file
+    :param p_file: path of input file
+    :param p_sheet: Excel worksheet tab
+    :return:
+    """
     print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (p_sheet, p_file))
 
     # Read Excel file and save as DataFrame
@@ -309,17 +320,19 @@ def extract_snu(save_path, snu_filename, snu_sheet="TRF_ESAL_INPUTS_SUMMARY"):
     save_csv(save_path, snu_list)
 
 
-def extract_trf(save_path, trf_filename):
-    trf_cols = {
-        "SHRP_ID": None, "STATE_CODE": None, "YEAR_MON_EST": None,
-        "AADT_ALL_VEHIC": None, "AADT_TRUCK_COMBO": None, "ANL_KESAL_LTPP_LN_YR": None
-    }
+def extract_trf(p_path, p_file, p_sheet=("TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL")):
+    """
+    Extract, prepare and unify data from historic and LTPP traffic estimation tables
 
-    trf_sheet = ["TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL"]
+    :param p_path: path of output file
+    :param p_file: path of input file
+    :param p_sheet: Excel worksheet tabs
+    :return:
+    """
 
     # Read Excel file and save as DataFrame
-    trf_his = pandas.read_excel(io=trf_filename, sheet_name=trf_sheet[0])
-    trf_mon = pandas.read_excel(io=trf_filename, sheet_name=trf_sheet[1])
+    trf_his = pandas.read_excel(io=p_file, sheet_name=p_sheet[0])
+    trf_mon = pandas.read_excel(io=p_file, sheet_name=p_sheet[1])
 
     trf_his_list = [[column for column in trf_his.columns]]
     trf_mon_list = [[column for column in trf_mon.columns]]
@@ -329,9 +342,10 @@ def extract_trf(save_path, trf_filename):
     for values in trf_mon.values:
         trf_mon_list.append([value for value in values])
 
-    trf_results = [list(trf_cols.keys())]
+    trf_results = [["SHRP_ID", "STATE_CODE", "YEAR_MON_EST",
+                    "AADT_ALL_VEHIC", "AADT_TRUCK_COMBO", "ANL_KESAL_LTPP_LN_YR"]]
 
-    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (trf_sheet[0], trf_filename))
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (p_sheet[0], p_file))
     for i in range(1, len(trf_his_list)):
         trf_results.append([
             trf_his_list[i][trf_his_list[0].index("SHRP_ID")],
@@ -344,12 +358,11 @@ def extract_trf(save_path, trf_filename):
         sys.stdout.write("\r- [TRF HIS]: %d/%d" % (i, len(trf_his_list) - 1))
     print("")
 
-    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (trf_sheet[1], trf_filename))
+    print("\U0001F6C8 Extracting \"%s\" from \"%s\"" % (p_sheet[1], p_file))
     for i in range(1, len(trf_mon_list)):
         status = False
 
         for j in range(1, len(trf_results)):
-
             if [trf_mon_list[i][trf_mon_list[0].index("SHRP_ID")],
                 trf_mon_list[i][trf_mon_list[0].index("STATE_CODE")],
                 trf_mon_list[i][trf_mon_list[0].index("YEAR_MON_EST")]] == \
@@ -384,7 +397,7 @@ def extract_trf(save_path, trf_filename):
      trf_results[0][trf_results[0].index("AADT_TRUCK_COMBO")],
      trf_results[0][trf_results[0].index("ANL_KESAL_LTPP_LN_YR")]] = ["AADT", "AADTT", "KESAL"]
 
-    extract_trf_cn(save_path, trf_results)
+    extract_trf_cn(p_path, trf_results)
 
 
 def row_to_str(p_row):
@@ -401,6 +414,13 @@ def int_float(p_value):
 
 
 def extract_trf_cn(save_path, trf_list):
+    """
+    Take traffic unified data and accumulate values depending on Construction Number assign date
+
+    :param save_path: path of output file
+    :param trf_list: traffic unified data
+    :return:
+    """
     cnd_list = load_csv(global_csv_path + "cnd.csv")
 
     for i in range(1, len(trf_list)):
@@ -450,6 +470,8 @@ def extract_trf_cn(save_path, trf_list):
 
     trf_result = deepcopy(trf_list)
 
+    trf_result[0].extend(["AADT_AVG", "AADT_CUM", "AADTT_AVG", "AADTT_CUM", "KESAL_AVG", "KESAL_CUM"])
+
     for i in range(1, len(trf_result)):
 
         last_values = list(filter(lambda x:
@@ -468,16 +490,134 @@ def extract_trf_cn(save_path, trf_list):
             aadtt = [x[trf_result[0].index("AADTT")] for x in last_values]
             kesal = [x[trf_result[0].index("KESAL")] for x in last_values]
 
-            if trf_result[i][trf_result[0].index("AADT")] != "":
-                trf_result[i][trf_result[0].index("AADT")] = average(aadt) if average(aadt) is not None else 0
-            if trf_result[i][trf_result[0].index("AADTT")] != "":
-                trf_result[i][trf_result[0].index("AADTT")] = average(aadtt) if average(aadtt) is not None else 0
-            if trf_result[i][trf_result[0].index("KESAL")] != "":
-                trf_result[i][trf_result[0].index("KESAL")] = average(kesal) if average(kesal) is not None else 0
+            trf_result[i].extend([0] * 6)
+
+            trf_result[i][trf_result[0].index("AADT_AVG")] = average(aadt) if average(aadt) is not None else 0
+            trf_result[i][trf_result[0].index("AADT_CUM")] = addition(aadt) if addition(aadt) is not None else 0
+            trf_result[i][trf_result[0].index("AADTT_AVG")] = average(aadtt) if average(aadtt) is not None else 0
+            trf_result[i][trf_result[0].index("AADTT_CUM")] = addition(aadtt) if addition(aadtt) is not None else 0
+            trf_result[i][trf_result[0].index("KESAL_AVG")] = average(kesal) if average(kesal) is not None else 0
+            trf_result[i][trf_result[0].index("KESAL_CUM")] = addition(kesal) if addition(kesal) is not None else 0
 
         sys.stdout.write("\r- [TRF SUM]: %d/%d" % (i, len(trf_result) - 1))
     print("")
+
     save_csv(save_path, trf_result)
+
+
+def get_last_day(year, month):
+    day = calendar.monthrange(int(year), int(month))[1]
+    date = str(year).zfill(4) + str(month).zfill(2) + str(day).zfill(2)
+    date = str(pd.to_datetime(date, format="%Y%m%d"))
+    return date
+
+
+def extract_vws_cn(save_path, vws_list):
+    """
+    Take VWS unified data and accumulate values depending on Construction Number assign date
+
+    :param save_path: path of output file
+    :param vws_list: VWS unified data
+    :return:
+    """
+    cnd_list = load_csv(global_csv_path + "cnd.csv")
+
+    for i in range(1, len(vws_list)):
+        vws_list[i] = row_to_str(vws_list[i])
+
+        # Completa con ceros si el ID no tiene 4 cifras
+        vws_list[i][vws_list[0].index("SHRP_ID")] = vws_list[i][vws_list[0].index("SHRP_ID")].zfill(4)
+
+        # Si existe, obtiene el Número de Construcción de fecha IGUAL o MENOR MÁXIMA que la de Tráfico
+        if len(list(filter(lambda x:
+                           [x[cnd_list[0].index("STATE_CODE")],
+                            x[cnd_list[0].index("SHRP_ID")]] ==
+                           [vws_list[i][vws_list[0].index("STATE_CODE")],
+                            vws_list[i][vws_list[0].index("SHRP_ID")]] and
+                           x[cnd_list[0].index("CN_ASSIGN_DATE")][0:4] <= get_last_day(
+                               vws_list[i][vws_list[0].index("YEAR")],
+                               vws_list[i][vws_list[0].index("MONTH")]),
+                           cnd_list))) > 0:
+            vws_list[i].append(max(filter(lambda x:
+                                          [x[cnd_list[0].index("STATE_CODE")],
+                                           x[cnd_list[0].index("SHRP_ID")]] ==
+                                          [vws_list[i][vws_list[0].index("STATE_CODE")],
+                                           vws_list[i][vws_list[0].index("SHRP_ID")]] and
+                                          x[cnd_list[0].index("CN_ASSIGN_DATE")][0:4] <= get_last_day(
+                                              vws_list[i][vws_list[0].index("YEAR")],
+                                              vws_list[i][vws_list[0].index("MONTH")]),
+                                          cnd_list), key=itemgetter(cnd_list[0].index("CONSTRUCTION_NO")))[
+                                   cnd_list[0].index("CONSTRUCTION_NO")])
+
+        # Si existe, obtiene el Número de Construcción de fecha MAYOR MÍNIMA que la de Tráfico
+        elif len(list(filter(lambda x:
+                             [x[cnd_list[0].index("STATE_CODE")],
+                              x[cnd_list[0].index("SHRP_ID")]] ==
+                             [vws_list[i][vws_list[0].index("STATE_CODE")],
+                              vws_list[i][vws_list[0].index("SHRP_ID")]] and
+                             x[cnd_list[0].index("CN_ASSIGN_DATE")][0:4] > get_last_day(
+                                 vws_list[i][vws_list[0].index("YEAR")],
+                                 vws_list[i][vws_list[0].index("MONTH")]),
+                             cnd_list))) > 0:
+            vws_list[i].append(min(filter(lambda x:
+                                          [x[cnd_list[0].index("STATE_CODE")],
+                                           x[cnd_list[0].index("SHRP_ID")]] ==
+                                          [vws_list[i][vws_list[0].index("STATE_CODE")],
+                                           vws_list[i][vws_list[0].index("SHRP_ID")]] and
+                                          x[cnd_list[0].index("CN_ASSIGN_DATE")][0:4] > get_last_day(
+                                              vws_list[i][vws_list[0].index("YEAR")],
+                                              vws_list[i][vws_list[0].index("MONTH")]),
+                                          cnd_list), key=itemgetter(cnd_list[0].index("CONSTRUCTION_NO")))[
+                                   cnd_list[0].index("CONSTRUCTION_NO")])
+        else:
+            vws_list[i].append("")
+        sys.stdout.write("\r- [VWS CN]: %d/%d" % (i, len(vws_list) - 1))
+    print("")
+    vws_list[0].extend(["CONSTRUCTION_NO", "MON_PREC_CUM", "MON_SNOW_CUM"])
+
+    # FIXME
+    # vws_list[0].extend(["ANN_PREC_CUM", "ANN_SNOW_CUM"])
+
+    vws_result = deepcopy(vws_list)
+
+    for i in range(1, len(vws_result)):
+
+        last_values = list(filter(lambda x:
+                                  [x[vws_list[0].index("SHRP_ID")],
+                                   x[vws_list[0].index("STATE_CODE")],
+                                   x[vws_list[0].index("CONSTRUCTION_NO")]] == [
+                                      vws_result[i][vws_result[0].index("SHRP_ID")],
+                                      vws_result[i][vws_result[0].index("STATE_CODE")],
+                                      vws_result[i][vws_result[0].index("CONSTRUCTION_NO")]] and
+                                  get_last_day(x[vws_list[0].index("YEAR")],
+                                               x[vws_list[0].index("MONTH")]) <=
+                                  get_last_day(vws_result[i][vws_list[0].index("YEAR")],
+                                               vws_result[i][vws_list[0].index("MONTH")]), vws_list[1:]))
+
+        if len(last_values) > 0:
+            # FIXME
+            # Cumulate annual values
+            # year = ann_prec = ann_snow = []
+            # for j in range(0, len(last_values)):
+            #     if last_values[j][vws_list[0].index("YEAR")] not in year:
+            #         year.append(last_values[j][vws_list[0].index("YEAR")])
+            #         ann_prec.append(last_values[j][vws_result[0].index("TOTAL_ANN_PRECIP")])
+            #         ann_snow.append(last_values[j][vws_result[0].index("TOTAL_SNOWFALL_YR")])
+
+            # Cumulate monthly values
+            mon_prec = [x[vws_list[0].index("TOTAL_MON_PRECIP")] for x in last_values]
+            mon_snow = [x[vws_list[0].index("TOTAL_SNOWFALL_MONTH")] for x in last_values]
+
+            vws_result[i].append(addition(mon_prec)) if addition(mon_prec) is not None else vws_result[i].append("")
+            vws_result[i].append(addition(mon_snow)) if addition(mon_snow) is not None else vws_result[i].append("")
+
+            # FIXME
+            # vws_result[i].append(addition(ann_prec)) if addition(ann_prec) is not None else vws_result[i].append("")
+            # vws_result[i].append(addition(ann_snow)) if addition(ann_snow) is not None else vws_result[i].append("")
+
+        sys.stdout.write("\r- [VWS SUM]: %d/%d" % (i, len(vws_result) - 1))
+    print("")
+    save_csv(save_path, vws_result)
 
 
 def average(p_list):
@@ -488,6 +628,18 @@ def average(p_list):
             count += 1
     if count > 0:
         return result / count
+    else:
+        return None
+
+
+def addition(p_list):
+    result = count = 0
+    for value in p_list:
+        if value != "":
+            result += int_float(value)
+            count += 1
+    if count > 0:
+        return result
     else:
         return None
 
@@ -724,8 +876,8 @@ def extract_vws(save_path, vws_filename):
 
         sys.stdout.write("\r- [VWS] ZONE: %d/%d" % (i, len(vws_results) - 1))
     print("")
-    # Save to CSV
-    save_csv(save_path, vws_results)
+
+    extract_vws_cn(save_path, vws_results)
 
 
 def vws_add_values(vws_in, vws_out, by_month, vws_columns):
@@ -786,8 +938,8 @@ def save_csv(p_path, p_data):
     print("\n\U0001F5AB Data saved")
 
 
-def load_csv(file):
-    with open(file, 'r', newline='') as f:
+def load_csv(p_file):
+    with open(p_file, 'r', newline='') as f:
         reader = csv.reader(f, delimiter=';')
         data = list(reader)
     return data
@@ -828,7 +980,7 @@ def main(xls_file, csv_path, question=False):
         print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
 
     # CSV output file addresses
-    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "vws.csv", "snu.csv", "cnd.csv", "trf.csv"]]
+    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "cnd.csv", "snu.csv", "vws.csv", "trf.csv"]]
 
     if not question:
         question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
@@ -843,9 +995,9 @@ def main(xls_file, csv_path, question=False):
             extract_iri(csv_tables[k], xls_file) if k == 0 else 0
             extract_def(csv_tables[k], xls_file) if k == 1 else 0
             extract_skn(csv_tables[k], xls_file) if k == 2 else 0
-            extract_vws(csv_tables[k], xls_file) if k == 3 else 0
+            extract_cnd(csv_tables[k], xls_file) if k == 3 else 0
             extract_snu(csv_tables[k], xls_file) if k == 4 else 0
-            extract_cnd(csv_tables[k], xls_file) if k == 5 else 0
+            extract_vws(csv_tables[k], xls_file) if k == 5 else 0
             extract_trf(csv_tables[k], xls_file) if k == 6 else 0
 
             partial_time = time.time() - start_time
@@ -857,11 +1009,15 @@ def main(xls_file, csv_path, question=False):
 
 
 if __name__ == '__main__':
-    p_input = "./xls/02_Alaska.xlsx"
-    p_output = "./csv/02_Alaska.csv"
+    xls_list = []
 
-    # start_time = time.time()
-    extract_def(p_output, p_input)
-    # time_new = time.time() - start_time
+    for file in os.listdir("./xls"):
+        if file.endswith(".xlsx"):
+            xls_list.append(os.path.join("./xls", file).replace("\\", "/"))
 
-    # print("\n > old: %.2f - new: %.2f - per: %.2f" % (time_old, time_new, time_new * 100 / time_old))
+    for k in range(0, len(xls_list)):
+        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+        print("(%s/%s) Current file: \"%s\"" % (k + 1, len(xls_list), xls_list[k]))
+
+        csv_path = "./csv/" + os.path.basename(xls_list[k])[0:-5] + "/"
+        main(xls_list[k], csv_path, True)
