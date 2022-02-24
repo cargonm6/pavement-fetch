@@ -146,6 +146,9 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
         filter(lambda x: x[def_list[0].index("DROP_HEIGHT")] == 2 and (x[def_list[0].index("LANE_NO")] in ["F1", "F3"]),
                def_list[1:]))
 
+    # (1) Obtain max values from PEAK_DEFL_1 and place them into PEAK_DEFL_1_MAX
+    def_sub1[0].append("MAX_DEF")
+
     # For loop in def_list
     for i in range(1, len(def_list)):
         status = False
@@ -165,18 +168,22 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
                                                                  def_sub1[j][def_sub1[0].index("POINT_LOC")]]:
 
                 # Copy PEAK_DEFL_1 if it was not the maximum
-                if def_sub1[j][def_sub1[0].index("PEAK_DEFL_1")] < def_list[i][def_list[0].index("PEAK_DEFL_1")]:
-                    def_sub1[j][def_sub1[0].index("PEAK_DEFL_1")] = def_list[i][def_list[0].index("PEAK_DEFL_1")]
+                if def_sub1[j][def_sub1[0].index("MAX_DEF")] < def_list[i][def_list[0].index("PEAK_DEFL_1")]:
+                    def_sub1[j][def_sub1[0].index("MAX_DEF")] = def_list[i][def_list[0].index("PEAK_DEFL_1")]
 
                 status = True
 
         # Copy new entry
         if not status:
             def_sub1.append(def_list[i])
+            def_sub1[-1].append(def_list[i][def_list[0].index("PEAK_DEFL_1")])
 
         sys.stdout.write("\r- [DEF 1]: %d/%d" % (i, len(def_list) - 1))
 
     print("")
+
+    # (2) Create PEAK_DEFL_1_MAX lists for all POINT_LOC
+    def_sub2[0].append("MAX_DEFS")
 
     # For loop in def_list
     for i in range(1, len(def_sub1)):
@@ -194,30 +201,29 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
                                                                def_sub2[j][def_sub2[0].index("TEST_DATE")],
                                                                def_sub2[j][def_sub2[0].index("LANE_NO")]]:
                 # Add deflection
-                def_sub2[j].append(def_sub1[i][def_sub1[0].index("PEAK_DEFL_1")])
+                def_sub2[j][def_sub2[0].index("MAX_DEFS")].append(def_sub1[i][def_sub1[0].index("MAX_DEF")])
                 status = True
 
-        #
         if not status:
-            def_sub2.append(def_sub1[i])
-            def_sub2[-1].append(def_sub1[i][def_sub1[0].index("PEAK_DEFL_1")])
+            def_sub2.append(def_sub1[i][:-1])
+            def_sub2[-1].append([def_sub1[i][def_sub1[0].index("MAX_DEF")]])
 
         sys.stdout.write("\r- [DEF 2]: %d/%d" % (i, len(def_sub1) - 1))
 
     print("")
 
-    for i in range(1, len(def_sub2)):
-        deflections = def_sub2[i][len(def_sub2[0]):len(def_sub2[i])]
-        if len(deflections) > 1:
-            def_sub2[i].append(statistics.mean(deflections))
-            def_sub2[i].append(max(deflections))
-            def_sub2[i].append(statistics.mean(deflections) + 2 * statistics.stdev(deflections))
-        else:
-            def_sub2[i].extend([""] * 3)
+    # (3) Calc mean, max and characteristic deflections
+    def_sub3[0].extend(["F1_DEF_AVG", "F1_DEF_MAX", "F1_DEF_CHR", "F3_DEF_AVG", "F3_DEF_MAX", "F3_DEF_CHR"])
 
-    # For loop in def_list
     for i in range(1, len(def_sub2)):
+
         status = False
+        max_defs = def_sub2[i][def_sub2[0].index("MAX_DEFS")]
+        deflections = ["", "", ""]
+        if len(deflections) > 1:
+            deflections[0] = statistics.mean(max_defs)  # Average DEF
+            deflections[1] = max(max_defs)  # Maximum DEF
+            deflections[2] = statistics.mean(max_defs) + statistics.stdev(max_defs) * 2  # Characteristic DEF
 
         # If there is a previous register
         for j in range(1, len(def_sub3)):
@@ -228,42 +234,43 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
                                                                  def_sub3[j][def_sub3[0].index("SHRP_ID")],
                                                                  def_sub3[j][def_sub3[0].index("CONSTRUCTION_NO")],
                                                                  def_sub3[j][def_sub3[0].index("TEST_DATE")]]:
+
                 if def_sub2[i][def_sub2[0].index("LANE_NO")] == "F1":
-                    def_sub3[j][def_sub2[0].index("PEAK_DEFL_1")] = def_sub2[i][-3]
-                    def_sub3[j][def_sub2[0].index("PEAK_DEFL_2")] = def_sub2[i][-2]
-                    def_sub3[j][def_sub2[0].index("PEAK_DEFL_3")] = def_sub2[i][-1]
+                    def_sub3[j][def_sub3[0].index("F1_DEF_AVG")] = deflections[0]
+                    def_sub3[j][def_sub3[0].index("F1_DEF_MAX")] = deflections[1]
+                    def_sub3[j][def_sub3[0].index("F1_DEF_CHR")] = deflections[2]
                 else:
-                    def_sub3[j][def_sub3[0].index("PEAK_DEFL_4")] = def_sub2[i][-3]
-                    def_sub3[j][def_sub3[0].index("PEAK_DEFL_5")] = def_sub2[i][-2]
-                    def_sub3[j][def_sub3[0].index("PEAK_DEFL_6")] = def_sub2[i][-1]
+                    def_sub3[j][def_sub3[0].index("F3_DEF_AVG")] = deflections[0]
+                    def_sub3[j][def_sub3[0].index("F3_DEF_MAX")] = deflections[1]
+                    def_sub3[j][def_sub3[0].index("F3_DEF_CHR")] = deflections[2]
 
                 status = True
 
-        #
         if not status:
-            def_sub3.append(def_sub2[i][0:len(def_sub2[0])])
+            def_sub3.append(def_sub2[i][:-1])
+            def_sub3[-1].extend([""] * 6)
             if def_sub2[i][def_sub2[0].index("LANE_NO")] == "F1":
-                def_sub3[-1][def_sub2[0].index("PEAK_DEFL_1")] = def_sub2[i][-3]
-                def_sub3[-1][def_sub2[0].index("PEAK_DEFL_2")] = def_sub2[i][-2]
-                def_sub3[-1][def_sub2[0].index("PEAK_DEFL_3")] = def_sub2[i][-1]
+                def_sub3[-1][-6] = deflections[0]
+                def_sub3[-1][-5] = deflections[1]
+                def_sub3[-1][-4] = deflections[2]
             else:
-                def_sub3[-1][def_sub3[0].index("PEAK_DEFL_4")] = def_sub2[i][-3]
-                def_sub3[-1][def_sub3[0].index("PEAK_DEFL_5")] = def_sub2[i][-2]
-                def_sub3[-1][def_sub3[0].index("PEAK_DEFL_6")] = def_sub2[i][-1]
+                def_sub3[-1][-3] = deflections[0]
+                def_sub3[-1][-2] = deflections[1]
+                def_sub3[-1][-1] = deflections[2]
 
         sys.stdout.write("\r- [DEF 3]: %d/%d" % (i, len(def_sub2) - 1))
+
+    print("")
 
     for i in range(1, len(def_sub3)):
         def_sub3[i] = [def_sub3[i][def_sub3[0].index("STATE_CODE")], def_sub3[i][def_sub3[0].index("SHRP_ID")],
                        def_sub3[i][def_sub3[0].index("CONSTRUCTION_NO")], def_sub3[i][def_sub3[0].index("TEST_DATE")],
-                       def_sub3[i][def_sub3[0].index("PEAK_DEFL_1")], def_sub3[i][def_sub3[0].index("PEAK_DEFL_2")],
-                       def_sub3[i][def_sub3[0].index("PEAK_DEFL_3")], def_sub3[i][def_sub3[0].index("PEAK_DEFL_4")],
-                       def_sub3[i][def_sub3[0].index("PEAK_DEFL_5")], def_sub3[i][def_sub3[0].index("PEAK_DEFL_6")]]
+                       def_sub3[i][def_sub3[0].index("F1_DEF_AVG")], def_sub3[i][def_sub3[0].index("F1_DEF_MAX")],
+                       def_sub3[i][def_sub3[0].index("F1_DEF_CHR")], def_sub3[i][def_sub3[0].index("F3_DEF_AVG")],
+                       def_sub3[i][def_sub3[0].index("F3_DEF_MAX")], def_sub3[i][def_sub3[0].index("F3_DEF_CHR")]]
 
     def_sub3[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "TEST_DATE",
                    "F1_DEF_AVG", "F1_DEF_MAX", "F1_DEF_CHR", "F3_DEF_AVG", "F3_DEF_MAX", "F3_DEF_CHR"]
-
-    print("")
 
     save_csv(p_path, def_sub3)
 
@@ -1014,6 +1021,8 @@ if __name__ == '__main__':
     for file in os.listdir("./xls"):
         if file.endswith(".xlsx"):
             xls_list.append(os.path.join("./xls", file).replace("\\", "/"))
+
+    # xls_list = ["./xls/08_Colorado.xlsx"]
 
     for k in range(0, len(xls_list)):
         print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
