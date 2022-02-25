@@ -220,7 +220,7 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
         status = False
         max_defs = def_sub2[i][def_sub2[0].index("MAX_DEFS")]
         deflections = ["", "", ""]
-        if len(deflections) > 1:
+        if len(max_defs) > 1:
             deflections[0] = statistics.mean(max_defs)  # Average DEF
             deflections[1] = max(max_defs)  # Maximum DEF
             deflections[2] = statistics.mean(max_defs) + statistics.stdev(max_defs) * 2  # Characteristic DEF
