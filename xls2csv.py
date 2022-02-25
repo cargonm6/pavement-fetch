@@ -1,6 +1,7 @@
 import calendar
 import math
 import os
+import shutil
 import statistics
 import sys
 import time
@@ -46,75 +47,88 @@ def extract_iri(p_path, p_file, p_sheet="MON_HSS_PROFILE_SECTION"):
     # Read Excel file and save as DataFrame
     df = pandas.read_excel(io=p_file, sheet_name=p_sheet)
 
-    # Create original matrix from data header
-    m_original = [[column for column in df.columns]]
+    df = df[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI"]]
 
-    # Append data values to original matrix
-    for values in df.values:
-        m_original.append([value for value in values])
+    df = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE"])["MRI"].agg(
+        [("IRI", lambda x: x.unique().mean()),
+         ("RUNS", lambda x: x.nunique()),
+         ("SD", lambda x: x.unique().std())])
 
-    # Append data values to original matrix
-    for i in range(1, len(m_original)):
-        m_original[i] = [m_original[i][m_original[0].index("STATE_CODE")],
-                         m_original[i][m_original[0].index("SHRP_ID")],
-                         m_original[i][m_original[0].index("CONSTRUCTION_NO")],
-                         m_original[i][m_original[0].index("VISIT_DATE")],
-                         m_original[i][m_original[0].index("MRI")]]
+    df.to_csv(path_or_buf=p_path, sep=";")
 
-    m_original[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI"]
-    m_results: List[Any] = [["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", 'ARRAY', "RUNS", "SD"]]
-
-    # For loop in iri_list
-    for i in range(1, len(m_original)):
-        status = False
-
-        # For loop in iri_results
-        for j in range(1, len(m_results)):
-            # If there is a previous register
-            if [m_original[i][m_original[0].index("STATE_CODE")],
-                m_original[i][m_original[0].index("SHRP_ID")],
-                m_original[i][m_original[0].index("CONSTRUCTION_NO")],
-                m_original[i][m_original[0].index("VISIT_DATE")]] == \
-                    [m_results[j][m_results[0].index("STATE_CODE")],
-                     m_results[j][m_results[0].index("SHRP_ID")],
-                     m_results[j][m_results[0].index("CONSTRUCTION_NO")],
-                     m_results[j][m_results[0].index("VISIT_DATE")]]:
-                # Append IRI to ARRAY
-                m_results[j][m_results[0].index("ARRAY")].append(m_original[i][m_original[0].index("MRI")])
-                status = True
-
-        # Add a new register and append IRI to ARRAY
-        if not status:
-            m_results.append(m_original[i] + [[m_original[i][m_original[0].index("MRI")]], "", ""])
-
-        sys.stdout.write("\r- [IRI]: %d/%d" % (i, len(m_original) - 1))
-
-    for m_result in m_results[1:]:
-        # RUNS is equal to ARRAY length
-        m_result[m_results[0].index("RUNS")] = len(m_result[m_results[0].index("ARRAY")])
-
-        # MRI is equal to the sum of MRI values divided by RUNS
-        m_result[m_results[0].index("IRI")] = \
-            sum(m_result[m_results[0].index("ARRAY")]) / m_result[m_results[0].index("RUNS")]
-
-        # If RUNS > 1, Standard Deviation SD will be obtained
-        if m_result[m_results[0].index("RUNS")] > 1:
-            m_result[m_results[0].index("SD")] = statistics.stdev(m_result[m_results[0].index("ARRAY")]) / \
-                                                 statistics.mean(m_result[m_results[0].index("ARRAY")])
-
-    # Select only desired columns
-    for i in range(1, len(m_results)):
-        m_results[i] = [m_results[i][m_results[0].index("STATE_CODE")], m_results[i][m_results[0].index("SHRP_ID")],
-                        m_results[i][m_results[0].index("CONSTRUCTION_NO")],
-                        m_results[i][m_results[0].index("VISIT_DATE")],
-                        m_results[i][m_results[0].index("IRI")], m_results[i][m_results[0].index("RUNS")],
-                        m_results[i][m_results[0].index("SD")]]
-
-    # sys.stdout.write("\r- (%d%%) Reducing results matrix..." % (i / len(m_results) * 100))
-    m_results[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", "RUNS", "SD"]
+    # print(df)
+    #
+    # exit(0)
+    #
+    # # Create original matrix from data header
+    # m_original = [[column for column in df.columns]]
+    #
+    # # Append data values to original matrix
+    # for values in df.values:
+    #     m_original.append([value for value in values])
+    #
+    # # Append data values to original matrix
+    # for i in range(1, len(m_original)):
+    #     m_original[i] = [m_original[i][m_original[0].index("STATE_CODE")],
+    #                      m_original[i][m_original[0].index("SHRP_ID")],
+    #                      m_original[i][m_original[0].index("CONSTRUCTION_NO")],
+    #                      m_original[i][m_original[0].index("VISIT_DATE")],
+    #                      m_original[i][m_original[0].index("MRI")]]
+    #
+    # m_original[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI"]
+    # m_results: List[Any] = [["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", 'ARRAY', "RUNS", "SD"]]
+    #
+    # # For loop in iri_list
+    # for i in range(1, len(m_original)):
+    #     status = False
+    #
+    #     # For loop in iri_results
+    #     for j in range(1, len(m_results)):
+    #         # If there is a previous register
+    #         if [m_original[i][m_original[0].index("STATE_CODE")],
+    #             m_original[i][m_original[0].index("SHRP_ID")],
+    #             m_original[i][m_original[0].index("CONSTRUCTION_NO")],
+    #             m_original[i][m_original[0].index("VISIT_DATE")]] == \
+    #                 [m_results[j][m_results[0].index("STATE_CODE")],
+    #                  m_results[j][m_results[0].index("SHRP_ID")],
+    #                  m_results[j][m_results[0].index("CONSTRUCTION_NO")],
+    #                  m_results[j][m_results[0].index("VISIT_DATE")]]:
+    #             # Append IRI to ARRAY
+    #             m_results[j][m_results[0].index("ARRAY")].append(m_original[i][m_original[0].index("MRI")])
+    #             status = True
+    #
+    #     # Add a new register and append IRI to ARRAY
+    #     if not status:
+    #         m_results.append(m_original[i] + [[m_original[i][m_original[0].index("MRI")]], "", ""])
+    #
+    #     sys.stdout.write("\r- [IRI]: %d/%d" % (i, len(m_original) - 1))
+    #
+    # for m_result in m_results[1:]:
+    #     # RUNS is equal to ARRAY length
+    #     m_result[m_results[0].index("RUNS")] = len(m_result[m_results[0].index("ARRAY")])
+    #
+    #     # MRI is equal to the sum of MRI values divided by RUNS
+    #     m_result[m_results[0].index("IRI")] = \
+    #         sum(m_result[m_results[0].index("ARRAY")]) / m_result[m_results[0].index("RUNS")]
+    #
+    #     # If RUNS > 1, Standard Deviation SD will be obtained
+    #     if m_result[m_results[0].index("RUNS")] > 1:
+    #         m_result[m_results[0].index("SD")] = statistics.stdev(m_result[m_results[0].index("ARRAY")]) / \
+    #                                              statistics.mean(m_result[m_results[0].index("ARRAY")])
+    #
+    # # Select only desired columns
+    # for i in range(1, len(m_results)):
+    #     m_results[i] = [m_results[i][m_results[0].index("STATE_CODE")], m_results[i][m_results[0].index("SHRP_ID")],
+    #                     m_results[i][m_results[0].index("CONSTRUCTION_NO")],
+    #                     m_results[i][m_results[0].index("VISIT_DATE")],
+    #                     m_results[i][m_results[0].index("IRI")], m_results[i][m_results[0].index("RUNS")],
+    #                     m_results[i][m_results[0].index("SD")]]
+    #
+    # # sys.stdout.write("\r- (%d%%) Reducing results matrix..." % (i / len(m_results) * 100))
+    # m_results[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", "RUNS", "SD"]
 
     # Save to CSV
-    save_csv(p_path, m_results)
+    # save_csv(p_path, m_results)
 
 
 def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
@@ -968,7 +982,16 @@ def str_time(p_time):
         round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
 
 
-def main(xls_file, csv_path, question=False):
+def main(xls_file, csv_path, xls_path):
+    """
+    Main function
+
+    :param xls_file: input list with Excel files
+    :param csv_path: CSV destination path
+    :param xls_path: XLS destination path
+    :param question: asking user if it should replace files
+    :return:
+    """
     global global_csv_path
     global_csv_path = csv_path
 
@@ -989,44 +1012,52 @@ def main(xls_file, csv_path, question=False):
     # CSV output file addresses
     csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "cnd.csv", "snu.csv", "vws.csv", "trf.csv"]]
 
-    if not question:
-        question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
+    # if question:
+    #     question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
 
     total_time = 0
 
     for k in range(0, len(csv_tables)):
-        if not os.path.isfile(csv_tables[k]) or (os.path.isfile(csv_tables[k]) and (question or question_yn(
-                "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
-            start_time = time.time()
+        # if not os.path.isfile(csv_tables[k]) or (os.path.isfile(csv_tables[k]) and (question or question_yn(
+        #         "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
+        start_time = time.time()
 
-            extract_iri(csv_tables[k], xls_file) if k == 0 else 0
-            extract_def(csv_tables[k], xls_file) if k == 1 else 0
-            extract_skn(csv_tables[k], xls_file) if k == 2 else 0
-            extract_cnd(csv_tables[k], xls_file) if k == 3 else 0
-            extract_snu(csv_tables[k], xls_file) if k == 4 else 0
-            extract_vws(csv_tables[k], xls_file) if k == 5 else 0
-            extract_trf(csv_tables[k], xls_file) if k == 6 else 0
+        extract_iri(csv_tables[k], xls_file) if k == 0 else 0
+        extract_def(csv_tables[k], xls_file) if k == 1 else 0
+        extract_skn(csv_tables[k], xls_file) if k == 2 else 0
+        extract_cnd(csv_tables[k], xls_file) if k == 3 else 0
+        extract_snu(csv_tables[k], xls_file) if k == 4 else 0
+        extract_vws(csv_tables[k], xls_file) if k == 5 else 0
+        extract_trf(csv_tables[k], xls_file) if k == 6 else 0
 
-            partial_time = time.time() - start_time
-            total_time += partial_time
-            print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
-                csv_tables[k], xls_file, str_time(partial_time)))
+        partial_time = time.time() - start_time
+        total_time += partial_time
+        print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
+            csv_tables[k], xls_file, str_time(partial_time)))
 
-    print("\U0001F6C8 Program finished in %s" % str_time(total_time))
+        exit(0)
+
+    # Move processed Excel to another folder
+    shutil.move(xls_file, xls_path + os.path.basename(xls_file))
+
+    print("\U0001F6C8 Process finished in %s" % str_time(total_time))
 
 
 if __name__ == '__main__':
-    xls_list = []
+    p_xls_ready = "./xls/ready/"
+    p_xls_done = "./xls/done/"
+    p_xls_list = []
 
-    for file in os.listdir("./xls"):
+    for file in os.listdir(p_xls_ready):
         if file.endswith(".xlsx"):
-            xls_list.append(os.path.join("./xls", file).replace("\\", "/"))
+            p_xls_list.append(os.path.join(p_xls_ready, file).replace("\\", "/"))
 
-    # xls_list = ["./xls/08_Colorado.xlsx"]
+    for k in range(0, len(p_xls_list)):
+        string = "(" + str(k + 1) + "/" + str(len(p_xls_list)) + ") Current file: \"" + p_xls_list[k] + "\""
 
-    for k in range(0, len(xls_list)):
-        print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print("(%s/%s) Current file: \"%s\"" % (k + 1, len(xls_list), xls_list[k]))
+        print("·" * len(string))
+        print(string)
+        print("·" * len(string))
 
-        csv_path = "./csv/" + os.path.basename(xls_list[k])[0:-5] + "/"
-        main(xls_list[k], csv_path, True)
+        p_csv_path = "./csv/" + os.path.basename(p_xls_list[k])[0:-5] + "/"
+        main(p_xls_list[k], p_csv_path, p_xls_done)
