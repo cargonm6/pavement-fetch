@@ -56,80 +56,6 @@ def extract_iri(p_path, p_file, p_sheet="MON_HSS_PROFILE_SECTION"):
 
     df.to_csv(path_or_buf=p_path, sep=";")
 
-    # print(df)
-    #
-    # exit(0)
-    #
-    # # Create original matrix from data header
-    # m_original = [[column for column in df.columns]]
-    #
-    # # Append data values to original matrix
-    # for values in df.values:
-    #     m_original.append([value for value in values])
-    #
-    # # Append data values to original matrix
-    # for i in range(1, len(m_original)):
-    #     m_original[i] = [m_original[i][m_original[0].index("STATE_CODE")],
-    #                      m_original[i][m_original[0].index("SHRP_ID")],
-    #                      m_original[i][m_original[0].index("CONSTRUCTION_NO")],
-    #                      m_original[i][m_original[0].index("VISIT_DATE")],
-    #                      m_original[i][m_original[0].index("MRI")]]
-    #
-    # m_original[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI"]
-    # m_results: List[Any] = [["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", 'ARRAY', "RUNS", "SD"]]
-    #
-    # # For loop in iri_list
-    # for i in range(1, len(m_original)):
-    #     status = False
-    #
-    #     # For loop in iri_results
-    #     for j in range(1, len(m_results)):
-    #         # If there is a previous register
-    #         if [m_original[i][m_original[0].index("STATE_CODE")],
-    #             m_original[i][m_original[0].index("SHRP_ID")],
-    #             m_original[i][m_original[0].index("CONSTRUCTION_NO")],
-    #             m_original[i][m_original[0].index("VISIT_DATE")]] == \
-    #                 [m_results[j][m_results[0].index("STATE_CODE")],
-    #                  m_results[j][m_results[0].index("SHRP_ID")],
-    #                  m_results[j][m_results[0].index("CONSTRUCTION_NO")],
-    #                  m_results[j][m_results[0].index("VISIT_DATE")]]:
-    #             # Append IRI to ARRAY
-    #             m_results[j][m_results[0].index("ARRAY")].append(m_original[i][m_original[0].index("MRI")])
-    #             status = True
-    #
-    #     # Add a new register and append IRI to ARRAY
-    #     if not status:
-    #         m_results.append(m_original[i] + [[m_original[i][m_original[0].index("MRI")]], "", ""])
-    #
-    #     sys.stdout.write("\r- [IRI]: %d/%d" % (i, len(m_original) - 1))
-    #
-    # for m_result in m_results[1:]:
-    #     # RUNS is equal to ARRAY length
-    #     m_result[m_results[0].index("RUNS")] = len(m_result[m_results[0].index("ARRAY")])
-    #
-    #     # MRI is equal to the sum of MRI values divided by RUNS
-    #     m_result[m_results[0].index("IRI")] = \
-    #         sum(m_result[m_results[0].index("ARRAY")]) / m_result[m_results[0].index("RUNS")]
-    #
-    #     # If RUNS > 1, Standard Deviation SD will be obtained
-    #     if m_result[m_results[0].index("RUNS")] > 1:
-    #         m_result[m_results[0].index("SD")] = statistics.stdev(m_result[m_results[0].index("ARRAY")]) / \
-    #                                              statistics.mean(m_result[m_results[0].index("ARRAY")])
-    #
-    # # Select only desired columns
-    # for i in range(1, len(m_results)):
-    #     m_results[i] = [m_results[i][m_results[0].index("STATE_CODE")], m_results[i][m_results[0].index("SHRP_ID")],
-    #                     m_results[i][m_results[0].index("CONSTRUCTION_NO")],
-    #                     m_results[i][m_results[0].index("VISIT_DATE")],
-    #                     m_results[i][m_results[0].index("IRI")], m_results[i][m_results[0].index("RUNS")],
-    #                     m_results[i][m_results[0].index("SD")]]
-    #
-    # # sys.stdout.write("\r- (%d%%) Reducing results matrix..." % (i / len(m_results) * 100))
-    # m_results[0] = ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "IRI", "RUNS", "SD"]
-
-    # Save to CSV
-    # save_csv(p_path, m_results)
-
 
 def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
     """
@@ -145,9 +71,35 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
     # Read Excel file and save as DataFrame
     df = pandas.read_excel(io=p_file, sheet_name=p_sheet)
 
+    # ---------------------------------
+
+    df = df[
+        ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "TEST_DATE", "DROP_HEIGHT", "LANE_NO", "POINT_LOC", "PEAK_DEFL_1"]]
+
+    df = df[(df["DROP_HEIGHT"] == 2) & ((df["LANE_NO"] == "F1") | (df["LANE_NO"] == "F3"))]
+
+    df = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "TEST_DATE", "LANE_NO", "POINT_LOC"],as_index=False)[
+        "PEAK_DEFL_1"].max()
+
+    # df = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "TEST_DATE"])["LANE_NO", "PEAK_DEFL_1"].agg(
+    #     [("F1_DEF_AVG", lambda x: ((x[0] == "F1")[1]).unique().mean()),
+    #      ("F1_DEF_MAX", lambda x: ((x[0] == "F1")[1]).unique().max()),
+    #      ("F1_DEF_CHR", lambda x: ((x[0] == "F1")[1]).unique().mean() + 2 * ((x[0] == "F1")[1]).unique().std()),
+    #      ("F3_DEF_AVG", lambda x: ((x[0] == "F3")[1]).unique().mean()),
+    #      ("F3_DEF_MAX", lambda x: ((x[0] == "F3")[1]).unique().max()),
+    #      ("F3_DEF_CHR", lambda x: ((x[0] == "F3")[1]).unique().mean() + 2 * ((x[0] == "F3")[1]).unique().std())
+    #      ]
+    # )
+
+    # df.to_csv(path_or_buf="./csv/test_def.csv", sep=";")
+    #
+    # return
+
+    # ---------------------------------
+
     # Append header
     def_list = [[column for column in df.columns]]
-    def_sub1 = deepcopy(def_list)
+    # def_sub1 = deepcopy(def_list)
     def_sub2 = deepcopy(def_list)
     def_sub3 = deepcopy(def_list)
 
@@ -155,74 +107,33 @@ def extract_def(p_path, p_file, p_sheet="MON_DEFL_DROP_DATA"):
     for values in df.values:
         def_list.append([value for value in values])
 
-    # Filter: only DROP_HEIGHT = 2 and LANE_NO = F1 | F3
-    def_list[1:] = list(
-        filter(lambda x: x[def_list[0].index("DROP_HEIGHT")] == 2 and (x[def_list[0].index("LANE_NO")] in ["F1", "F3"]),
-               def_list[1:]))
-
-    # (1) Obtain max values from PEAK_DEFL_1 and place them into PEAK_DEFL_1_MAX
-    def_sub1[0].append("MAX_DEF")
+    # (2) Create PEAK_DEFL_1_MAX lists for all POINT_LOC
+    def_sub2[0].append("MAX_DEFS")
 
     # For loop in def_list
     for i in range(1, len(def_list)):
         status = False
 
         # If there is a previous register
-        for j in range(1, len(def_sub1)):
+        for j in range(1, len(def_sub2)):
             if [def_list[i][def_list[0].index("STATE_CODE")],
                 def_list[i][def_list[0].index("SHRP_ID")],
                 def_list[i][def_list[0].index("CONSTRUCTION_NO")],
                 def_list[i][def_list[0].index("TEST_DATE")],
-                def_list[i][def_list[0].index("LANE_NO")],
-                def_list[i][def_list[0].index("POINT_LOC")]] == [def_sub1[j][def_sub1[0].index("STATE_CODE")],
-                                                                 def_sub1[j][def_sub1[0].index("SHRP_ID")],
-                                                                 def_sub1[j][def_sub1[0].index("CONSTRUCTION_NO")],
-                                                                 def_sub1[j][def_sub1[0].index("TEST_DATE")],
-                                                                 def_sub1[j][def_sub1[0].index("LANE_NO")],
-                                                                 def_sub1[j][def_sub1[0].index("POINT_LOC")]]:
-
-                # Copy PEAK_DEFL_1 if it was not the maximum
-                if def_sub1[j][def_sub1[0].index("MAX_DEF")] < def_list[i][def_list[0].index("PEAK_DEFL_1")]:
-                    def_sub1[j][def_sub1[0].index("MAX_DEF")] = def_list[i][def_list[0].index("PEAK_DEFL_1")]
-
-                status = True
-
-        # Copy new entry
-        if not status:
-            def_sub1.append(def_list[i])
-            def_sub1[-1].append(def_list[i][def_list[0].index("PEAK_DEFL_1")])
-
-        sys.stdout.write("\r- [DEF 1]: %d/%d" % (i, len(def_list) - 1))
-
-    print("")
-
-    # (2) Create PEAK_DEFL_1_MAX lists for all POINT_LOC
-    def_sub2[0].append("MAX_DEFS")
-
-    # For loop in def_list
-    for i in range(1, len(def_sub1)):
-        status = False
-
-        # If there is a previous register
-        for j in range(1, len(def_sub2)):
-            if [def_sub1[i][def_sub1[0].index("STATE_CODE")],
-                def_sub1[i][def_sub1[0].index("SHRP_ID")],
-                def_sub1[i][def_sub1[0].index("CONSTRUCTION_NO")],
-                def_sub1[i][def_sub1[0].index("TEST_DATE")],
-                def_sub1[i][def_sub1[0].index("LANE_NO")]] == [def_sub2[j][def_sub2[0].index("STATE_CODE")],
+                def_list[i][def_list[0].index("LANE_NO")]] == [def_sub2[j][def_sub2[0].index("STATE_CODE")],
                                                                def_sub2[j][def_sub2[0].index("SHRP_ID")],
                                                                def_sub2[j][def_sub2[0].index("CONSTRUCTION_NO")],
                                                                def_sub2[j][def_sub2[0].index("TEST_DATE")],
                                                                def_sub2[j][def_sub2[0].index("LANE_NO")]]:
                 # Add deflection
-                def_sub2[j][def_sub2[0].index("MAX_DEFS")].append(def_sub1[i][def_sub1[0].index("MAX_DEF")])
+                def_sub2[j][def_sub2[0].index("MAX_DEFS")].append(def_list[i][def_list[0].index("PEAK_DEFL_1")])
                 status = True
 
         if not status:
-            def_sub2.append(def_sub1[i][:-1])
-            def_sub2[-1].append([def_sub1[i][def_sub1[0].index("MAX_DEF")]])
+            def_sub2.append(def_list[i])
+            def_sub2[-1].append([def_list[i][def_list[0].index("PEAK_DEFL_1")]])
 
-        sys.stdout.write("\r- [DEF 2]: %d/%d" % (i, len(def_sub1) - 1))
+        sys.stdout.write("\r- [DEF 2]: %d/%d" % (i, len(def_list) - 1))
 
     print("")
 
@@ -1022,23 +933,21 @@ def main(xls_file, csv_path, xls_path):
         #         "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
         start_time = time.time()
 
-        extract_iri(csv_tables[k], xls_file) if k == 0 else 0
+        # extract_iri(csv_tables[k], xls_file) if k == 0 else 0
         extract_def(csv_tables[k], xls_file) if k == 1 else 0
-        extract_skn(csv_tables[k], xls_file) if k == 2 else 0
-        extract_cnd(csv_tables[k], xls_file) if k == 3 else 0
-        extract_snu(csv_tables[k], xls_file) if k == 4 else 0
-        extract_vws(csv_tables[k], xls_file) if k == 5 else 0
-        extract_trf(csv_tables[k], xls_file) if k == 6 else 0
+        # extract_skn(csv_tables[k], xls_file) if k == 2 else 0
+        # extract_cnd(csv_tables[k], xls_file) if k == 3 else 0
+        # extract_snu(csv_tables[k], xls_file) if k == 4 else 0
+        # extract_vws(csv_tables[k], xls_file) if k == 5 else 0
+        # extract_trf(csv_tables[k], xls_file) if k == 6 else 0
 
         partial_time = time.time() - start_time
         total_time += partial_time
         print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
             csv_tables[k], xls_file, str_time(partial_time)))
 
-        exit(0)
-
     # Move processed Excel to another folder
-    shutil.move(xls_file, xls_path + os.path.basename(xls_file))
+    # shutil.move(xls_file, xls_path + os.path.basename(xls_file))
 
     print("\U0001F6C8 Process finished in %s" % str_time(total_time))
 
