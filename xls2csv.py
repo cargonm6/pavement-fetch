@@ -8,14 +8,10 @@ import time
 from copy import deepcopy
 from operator import itemgetter
 
-import numpy
 import pandas
 import pandas as pd
 
 import csv
-
-# from typing import List, Any
-# import datetime
 
 global_csv_path = "./csv/"
 
@@ -427,9 +423,6 @@ def extract_vws_cn(save_path, vws_list, vws_filename):
     print("")
     vws_list[0].extend(["CONSTRUCTION_NO", "MON_PREC_CUM", "MON_SNOW_CUM"])
 
-    # FIXME
-    # vws_list[0].extend(["ANN_PREC_CUM", "ANN_SNOW_CUM"])
-
     vws_result = deepcopy(vws_list)
 
     for i in range(1, len(vws_result)):
@@ -766,11 +759,11 @@ def main(xls_file, csv_path, xls_path):
         start_time = time.time()
 
         extract_iri(csv_tables[n], xls_file) if n == 0 else 0
-        # extract_def(csv_tables[n], xls_file) if n == 1 else 0
-        # extract_skn(csv_tables[n], xls_file) if n == 2 else 0
-        # extract_snu(csv_tables[n], xls_file) if n == 3 else 0
-        # extract_vws(csv_tables[n], xls_file) if n == 4 else 0
-        # extract_trf(csv_tables[n], xls_file) if n == 5 else 0
+        extract_def(csv_tables[n], xls_file) if n == 1 else 0
+        extract_skn(csv_tables[n], xls_file) if n == 2 else 0
+        extract_snu(csv_tables[n], xls_file) if n == 3 else 0
+        extract_vws(csv_tables[n], xls_file) if n == 4 else 0
+        extract_trf(csv_tables[n], xls_file) if n == 5 else 0
 
         partial_time = time.time() - start_time
         total_time += partial_time
@@ -778,7 +771,7 @@ def main(xls_file, csv_path, xls_path):
             csv_tables[n], xls_file, str_time(partial_time)))
 
     # Move processed Excel to another folder
-    # shutil.move(xls_file, xls_path + os.path.basename(xls_file))
+    shutil.move(xls_file, xls_path + os.path.basename(xls_file))
 
     print("\U0001F6C8 Process finished in %s" % str_time(total_time))
 
