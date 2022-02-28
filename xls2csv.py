@@ -275,14 +275,6 @@ def extract_trf(p_path, p_file, p_sheet=("TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL"
     for values in df_cnd.values:
         cnd_list.append([value for value in values])
 
-    print(type(cnd_list[1][cnd_list[0].index("STATE_CODE")]),
-          type(cnd_list[1][cnd_list[0].index("SHRP_ID")]),
-          type(cnd_list[1][cnd_list[0].index("CN_ASSIGN_DATE")]))
-
-    print(type(trf_list[1][trf_list[0].index("STATE_CODE")]),
-          type(trf_list[1][trf_list[0].index("SHRP_ID")]),
-          type(trf_list[1][trf_list[0].index("YEAR")]))
-
     for i in range(1, len(trf_list)):
 
         # Si existe, obtiene el Número de Construcción de fecha IGUAL o MENOR MÁXIMA que la de Tráfico
