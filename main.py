@@ -109,183 +109,230 @@ def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
     save_csv(p_path_res + p_code + "_join.csv", p_result)
 
 
-def master_pci(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws):
+def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
+    if p_table == "pci":
+        table_number = len(p_pci)
+        table_master = deepcopy(p_pci)
+        table_dating = "SURVEY_DATE"
+    elif p_table == "iri":
+        table_number = len(p_iri)
+        table_master = deepcopy(p_iri)
+        table_dating = "VISIT_DATE"
+    elif p_table == "def":
+        table_number = len(p_def)
+        table_master = deepcopy(p_def)
+        table_dating = "TEST_DATE"
+    else:
+        table_number = len(p_skn)
+        table_master = deepcopy(p_skn)
+        table_dating = "FRICTION_DATE"
+
     # == PCI ==
 
-    limit = len(p_pci)
+    if p_table != "pci":
+        table_master[0].extend(p_pci[0][5:len(p_pci[0])])
+        table_master[0].append("PCI_YEAR_DIF")
+        count = 0
+
+        for i in range(1, table_number):
+
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[p_pci[0].index("SHRP_ID")],
+                                          x[p_pci[0].index("STATE_CODE")],
+                                          x[p_pci[0].index("CONSTRUCTION_NO")]] == [
+                                             table_master[i][table_master[0].index("SHRP_ID")],
+                                             table_master[i][table_master[0].index("STATE_CODE")],
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_pci)),
+                             key=lambda x: abs(date_diff(x[p_pci[0].index("SURVEY_DATE")],
+                                                         table_master[i][table_master[0].index(table_dating)])))
+
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                table_master[i].extend(nearest[0][5:len(nearest[0])])
+                table_master[i].append(date_diff(nearest[0][p_pci[0].index("SURVEY_DATE")],
+                                                 table_master[i][table_master[0].index(table_dating)]) / 365)
+                count += 1
+            else:
+                table_master[i].extend([""] * 55)
+            sys.stdout.write("\r- PCI %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
+        print("")
 
     # == IRI ==
 
-    p_pci[0].extend(["IRI", "IRI_YEAR_DIF"])
-    count = 0
+    if p_table != "iri":
+        table_master[0].extend(["IRI", "IRI_YEAR_DIF"])
+        count = 0
 
-    for i in range(1, limit):
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[p_iri[0].index("SHRP_ID")],
-                                      x[p_iri[0].index("STATE_CODE")],
-                                      x[p_iri[0].index("CONSTRUCTION_NO")]] == [
-                                         p_pci[i][p_pci[0].index("SHRP_ID")],
-                                         p_pci[i][p_pci[0].index("STATE_CODE")],
-                                         p_pci[i][p_pci[0].index("CONSTRUCTION_NO")]], p_iri)),
-                         key=lambda x: abs(date_diff(x[p_iri[0].index("VISIT_DATE")],
-                                                     p_pci[i][p_pci[0].index("SURVEY_DATE")])))
+        for i in range(1, table_number):
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[p_iri[0].index("SHRP_ID")],
+                                          x[p_iri[0].index("STATE_CODE")],
+                                          x[p_iri[0].index("CONSTRUCTION_NO")]] == [
+                                             table_master[i][table_master[0].index("SHRP_ID")],
+                                             table_master[i][table_master[0].index("STATE_CODE")],
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_iri)),
+                             key=lambda x: abs(date_diff(x[p_iri[0].index("VISIT_DATE")],
+                                                         table_master[i][table_master[0].index(table_dating)])))
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            p_pci[i].append(nearest[0][p_iri[0].index("IRI")])
-            p_pci[i].append(date_diff(nearest[0][p_iri[0].index("VISIT_DATE")],
-                                      p_pci[i][p_pci[0].index("SURVEY_DATE")]) / 365)
-            count += 1
-        else:
-            p_pci[i].extend([""] * 2)
-        sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                table_master[i].append(nearest[0][p_iri[0].index("IRI")])
+                table_master[i].append(date_diff(nearest[0][p_iri[0].index("VISIT_DATE")],
+                                                 table_master[i][table_master[0].index(table_dating)]) / 365)
+                count += 1
+            else:
+                table_master[i].extend([""] * 2)
+            sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
+        print("")
 
     # == DEF ==
 
-    p_pci[0].extend(p_def[0][4:len(p_def[0])])
-    p_pci[0].append("DEF_YEAR_DIF")
-    count = 0
+    if p_table != "def":
+        table_master[0].extend(p_def[0][4:len(p_def[0])])
+        table_master[0].append("DEF_YEAR_DIF")
+        count = 0
 
-    for i in range(1, limit):
+        for i in range(1, table_number):
 
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[p_def[0].index("SHRP_ID")],
-                                      x[p_def[0].index("STATE_CODE")],
-                                      x[p_def[0].index("CONSTRUCTION_NO")]] == [
-                                         p_pci[i][p_pci[0].index("SHRP_ID")],
-                                         p_pci[i][p_pci[0].index("STATE_CODE")],
-                                         p_pci[i][p_pci[0].index("CONSTRUCTION_NO")]], p_def)),
-                         key=lambda x: abs(date_diff(x[p_def[0].index("TEST_DATE")],
-                                                     p_pci[i][p_pci[0].index("SURVEY_DATE")])))
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[p_def[0].index("SHRP_ID")],
+                                          x[p_def[0].index("STATE_CODE")],
+                                          x[p_def[0].index("CONSTRUCTION_NO")]] == [
+                                             table_master[i][table_master[0].index("SHRP_ID")],
+                                             table_master[i][table_master[0].index("STATE_CODE")],
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_def)),
+                             key=lambda x: abs(date_diff(x[p_def[0].index("TEST_DATE")],
+                                                         table_master[i][table_master[0].index(table_dating)])))
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            p_pci[i].extend(nearest[0][4:len(nearest[0])])
-            p_pci[i].append(date_diff(nearest[0][p_def[0].index("TEST_DATE")],
-                                      p_pci[i][p_pci[0].index("SURVEY_DATE")]) / 365)
-            count += 1
-        else:
-            p_pci[i].extend([""] * 7)
-        sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                table_master[i].extend(nearest[0][4:len(nearest[0])])
+                table_master[i].append(date_diff(nearest[0][p_def[0].index("TEST_DATE")],
+                                                 table_master[i][table_master[0].index(table_dating)]) / 365)
+                count += 1
+            else:
+                table_master[i].extend([""] * 7)
+            sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
+        print("")
 
     # == SKN ==
 
-    p_pci[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
-    count = 0
+    if p_table != "skn":
+        table_master[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
+        count = 0
 
-    for i in range(1, limit):
+        for i in range(1, table_number):
 
-        # Lista ordenada de valores por diferencia de fechas
-        nearest = sorted(list(filter(lambda x:
-                                     [x[p_skn[0].index("SHRP_ID")],
-                                      x[p_skn[0].index("STATE_CODE")],
-                                      x[p_skn[0].index("CONSTRUCTION_NO")]] == [
-                                         p_pci[i][p_pci[0].index("SHRP_ID")],
-                                         p_pci[i][p_pci[0].index("STATE_CODE")],
-                                         p_pci[i][p_pci[0].index("CONSTRUCTION_NO")]], p_skn)),
-                         key=lambda x: abs(date_diff(x[p_skn[0].index("FRICTION_DATE")],
-                                                     p_pci[i][p_pci[0].index("SURVEY_DATE")])))
+            # Lista ordenada de valores por diferencia de fechas
+            nearest = sorted(list(filter(lambda x:
+                                         [x[p_skn[0].index("SHRP_ID")],
+                                          x[p_skn[0].index("STATE_CODE")],
+                                          x[p_skn[0].index("CONSTRUCTION_NO")]] == [
+                                             table_master[i][table_master[0].index("SHRP_ID")],
+                                             table_master[i][table_master[0].index("STATE_CODE")],
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_skn)),
+                             key=lambda x: abs(date_diff(x[p_skn[0].index("FRICTION_DATE")],
+                                                         table_master[i][table_master[0].index(table_dating)])))
 
-        # Añade el índice y diferencia de fechas del primer valor de la lista
-        if len(nearest) > 0:
-            p_pci[i].append(nearest[0][p_skn[0].index("FRICTION_NO_END")])
-            p_pci[i].append(date_diff(nearest[0][p_skn[0].index("FRICTION_DATE")],
-                                      p_pci[i][p_pci[0].index("SURVEY_DATE")]) / 365)
-            count += 1
-        else:
-            p_pci[i].extend([""] * 2)
-        sys.stdout.write("\r- SKN %d/%d: añadidas %s entradas" % (i, limit - 1, count))
-    print("")
+            # Añade el índice y diferencia de fechas del primer valor de la lista
+            if len(nearest) > 0:
+                table_master[i].append(nearest[0][p_skn[0].index("FRICTION_NO_END")])
+                table_master[i].append(date_diff(nearest[0][p_skn[0].index("FRICTION_DATE")],
+                                                 table_master[i][table_master[0].index(table_dating)]) / 365)
+                count += 1
+            else:
+                table_master[i].extend([""] * 2)
+            sys.stdout.write("\r- SKN %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
+        print("")
 
     # == CND ==
 
-    p_pci[0].append("Pa")
+    table_master[0].append("Pa")
     count = 0
 
-    for i in range(1, limit):
+    for i in range(1, table_number):
 
         # Lista de valores
         nearest = list(filter(lambda x:
                               [x[p_cnd[0].index("SHRP_ID")],
                                x[p_cnd[0].index("STATE_CODE")],
                                x[p_cnd[0].index("CONSTRUCTION_NO")]] == [
-                                  p_pci[i][p_pci[0].index("SHRP_ID")],
-                                  p_pci[i][p_pci[0].index("STATE_CODE")],
-                                  p_pci[i][p_pci[0].index("CONSTRUCTION_NO")]], p_cnd))
+                                  table_master[i][table_master[0].index("SHRP_ID")],
+                                  table_master[i][table_master[0].index("STATE_CODE")],
+                                  table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_cnd))
 
         # Añade la diferencia de fechas del primer valor de la lista
         if len(nearest) > 0:
-            p_pci[i].append(date_diff(p_pci[i][p_pci[0].index("SURVEY_DATE")],
-                                      nearest[0][p_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
+            table_master[i].append(date_diff(table_master[i][table_master[0].index(table_dating)],
+                                             nearest[0][p_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
             count += 1
         else:
-            p_pci[i].append("")
+            table_master[i].append("")
 
-        sys.stdout.write("\r- CND %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        sys.stdout.write("\r- CND %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
     # == TRF ==
 
-    p_pci[0].extend(p_trf[0][3:6])
+    table_master[0].extend(p_trf[0][3:6])
     count = 0
 
-    for i in range(1, limit):
+    for i in range(1, table_number):
 
         # Lista de valores
         nearest = list(filter(lambda x:
                               [x[p_trf[0].index("SHRP_ID")],
                                x[p_trf[0].index("STATE_CODE")],
                                int(str(x[p_trf[0].index("YEAR_MON_EST")])[0:4])] == [
-                                  p_pci[i][p_pci[0].index("SHRP_ID")],
-                                  p_pci[i][p_pci[0].index("STATE_CODE")],
-                                  int_year(p_pci[i][p_pci[0].index("SURVEY_DATE")])], p_trf[1:]))
+                                  table_master[i][table_master[0].index("SHRP_ID")],
+                                  table_master[i][table_master[0].index("STATE_CODE")],
+                                  int_year(table_master[i][table_master[0].index(table_dating)])], p_trf[1:]))
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
-            p_pci[i].extend(nearest[0][3:6])
+            table_master[i].extend(nearest[0][3:6])
             count += 1
         else:
-            p_pci[i].extend([""] * 3)
+            table_master[i].extend([""] * 3)
 
-        sys.stdout.write("\r- TRF %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        sys.stdout.write("\r- TRF %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
     # == SNU ==
 
-    p_pci[0].append("SN")
+    table_master[0].append("SN")
     count = 0
 
-    for i in range(1, limit):
+    for i in range(1, table_number):
 
         # Lista de valores
         nearest = list(filter(lambda x:
                               [x[p_snu[0].index("SHRP_ID")],
                                x[p_snu[0].index("STATE_CODE")],
                                x[p_snu[0].index("CONSTRUCTION_NO")]] == [
-                                  p_pci[i][p_pci[0].index("SHRP_ID")],
-                                  p_pci[i][p_pci[0].index("STATE_CODE")],
-                                  p_pci[i][p_pci[0].index("CONSTRUCTION_NO")]], p_snu))
+                                  table_master[i][table_master[0].index("SHRP_ID")],
+                                  table_master[i][table_master[0].index("STATE_CODE")],
+                                  table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_snu))
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
-            p_pci[i].append(nearest[0][p_snu[0].index("SN_VALUE")])
+            table_master[i].append(nearest[0][p_snu[0].index("SN_VALUE")])
             count += 1
         else:
-            p_pci[i].append("")
+            table_master[i].append("")
 
-        sys.stdout.write("\r- SNU %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        sys.stdout.write("\r- SNU %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
     # == VWS ==
 
-    p_pci[0].extend(p_vws[0][4:len(p_vws[0])])
+    table_master[0].extend(p_vws[0][4:len(p_vws[0])])
     count = 0
 
-    for i in range(1, limit):
+    for i in range(1, table_number):
 
         # Lista de valores
         nearest = list(filter(lambda x:
@@ -293,25 +340,25 @@ def master_pci(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws):
                                x[p_vws[0].index("STATE_CODE")],
                                int(x[p_vws[0].index("YEAR")]),
                                int(x[p_vws[0].index("MONTH")])] == [
-                                  p_pci[i][p_pci[0].index("SHRP_ID")],
-                                  p_pci[i][p_pci[0].index("STATE_CODE")],
-                                  int_year(p_pci[i][p_pci[0].index("SURVEY_DATE")]),
-                                  int_month(p_pci[i][p_pci[0].index("SURVEY_DATE")]),
+                                  table_master[i][table_master[0].index("SHRP_ID")],
+                                  table_master[i][table_master[0].index("STATE_CODE")],
+                                  int_year(table_master[i][table_master[0].index(table_dating)]),
+                                  int_month(table_master[i][table_master[0].index(table_dating)]),
                               ], p_vws[1:]))
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
-            p_pci[i].extend(nearest[0][4:len(nearest[0])])
+            table_master[i].extend(nearest[0][4:len(nearest[0])])
             count += 1
         else:
-            p_pci[i].extend([""] * 16)
+            table_master[i].extend([""] * 16)
 
-        sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, limit - 1, count))
+        sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
-    p_pci = form_table(p_pci)
+    table_master = form_table(table_master)
 
-    return p_pci
+    save_csv("./res/master_" + p_table + ".csv", table_master)
 
 
 def form_table(table):
@@ -366,6 +413,9 @@ def form_table(table):
                     table[i][table[0].index("CLIMATIC ZONE")], table[i][table[0].index("CONSTRUCTION_NO")],
                     table[i][table[0].index("MON_PREC_CUM")], table[i][table[0].index("MON_SNOW_CUM")]]
 
+        sys.stdout.write("\r- VWS %d/%d: formando tabla" % (i + 1, len(table)))
+        print("")
+
     table[0] = ["STATE_CODE ", "STATE_CODE_EXP ", "SHRP_ID ", "SURVEY_DATE ", "CONSTRUCTION_NO ", "GATOR_CRACK_A_L ",
                 "GATOR_CRACK_A_M ", "GATOR_CRACK_A_H ", "BLK_CRACK_A_L ", "BLK_CRACK_A_M ", "BLK_CRACK_A_H ",
                 "EDGE_CRACK_L_L ", "EDGE_CRACK_L_M ", "EDGE_CRACK_L_H ", "LONG_CRACK_WP_L_L ", "LONG_CRACK_WP_L_M ",
@@ -384,8 +434,8 @@ def form_table(table):
                 "MEAN_ANN_TEMP_AVG ", "MEAN_MON_TEMP_AVG ", "FREEZE_INDEX_YR ", "FREEZE_INDEX_MONTH ",
                 "FREEZE_THAW_YR ", "FREEZE_THAW_MONTH ", "MEAN_ANN_WIND_AVG ", "MEAN_MON_WIND_AVG ",
                 "MAX_ANN_HUM_AVG ", "MAX_MON_HUM_AVG ", "MIN_ANN_HUM_AVG ", "MIN_MON_HUM_AVG ", "CLIMATIC ZONE ",
-                "CONSTRUCTION_NO ", "MON_PREC_CUM ", "MON_SNOW_CUM"
-                ]
+                "CONSTRUCTION_NO ", "MON_PREC_CUM ", "MON_SNOW_CUM"]
+
     return table
 
 
@@ -437,12 +487,10 @@ if __name__ == '__main__':
 
     # =====================================================================
 
-    master_tables = [deepcopy(csv_pci), deepcopy(csv_iri), deepcopy(csv_def), deepcopy(csv_skn)]
-
-    save_csv("./res/master_pci.csv", master_pci(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws))
-    # save_csv("./res/master_iri.csv", master_iri(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws))
-    # save_csv("./res/master_def.csv", master_def(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws))
-    # save_csv("./res/master_skn.csv", master_skn(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws))
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn")
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
 
