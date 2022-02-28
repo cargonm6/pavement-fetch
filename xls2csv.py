@@ -367,8 +367,9 @@ def extract_vws_cn(save_path, vws_list, vws_filename):
     :return:
     """
 
-    df_cnd = pandas.read_excel(io=vws_filename, sheet_name="EXPERIMENT_SECTION")
-    df_cnd = df_cnd[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "CN_ASSIGN_DATE"]]
+    df_cnd = pandas.read_excel(io=vws_filename, sheet_name="EXPERIMENT_SECTION")[
+        ["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "CN_ASSIGN_DATE"]]
+    df_cnd["SHRP_ID"] = df_cnd["SHRP_ID"].astype(str)
 
     cnd_list = [[column for column in df_cnd.columns]]
     for values in df_cnd.values:
@@ -574,18 +575,6 @@ def extract_vws(save_path, vws_filename):
     # For each STATE_CODE + SHRP_ID + YEAR:
     # - Obtain the ANNUAL averages of: precipitation, snowfall, temperature, freeze, wind and humidity
 
-    # vws_cols = {
-    #     "SHRP_ID": None, "STATE_CODE": None, "YEAR": None, "MONTH": None,
-    #     "TOTAL_ANN_PRECIP": None, "TOTAL_MON_PRECIP": None,
-    #     "TOTAL_SNOWFALL_YR": None, "TOTAL_SNOWFALL_MONTH": None,
-    #     "MEAN_ANN_TEMP_AVG": None, "MEAN_MON_TEMP_AVG": None,
-    #     "FREEZE_INDEX_YR": None, "FREEZE_INDEX_MONTH": None,
-    #     "FREEZE_THAW_YR": None, "FREEZE_THAW_MONTH": None,
-    #     "MEAN_ANN_WIND_AVG": None, "MEAN_MON_WIND_AVG": None,
-    #     "MAX_ANN_HUM_AVG": None, "MAX_MON_HUM_AVG": None,
-    #     "MIN_ANN_HUM_AVG": None, "MIN_MON_HUM_AVG": None
-    # }
-    #
     vws_sheet = ["CLM_VWS_PRECIP_ANNUAL", "CLM_VWS_PRECIP_MONTH",
                  "CLM_VWS_TEMP_ANNUAL", "CLM_VWS_TEMP_MONTH",
                  "CLM_VWS_WIND_ANNUAL", "CLM_VWS_WIND_MONTH",
@@ -608,6 +597,16 @@ def extract_vws(save_path, vws_filename):
         ["SHRP_ID", "STATE_CODE", "YEAR", "MAX_ANN_HUM_AVG", "MIN_ANN_HUM_AVG"]]
     vws_hu_m = pandas.read_excel(io=vws_filename, sheet_name=vws_sheet[7])[
         ["SHRP_ID", "STATE_CODE", "YEAR", "MONTH", "MAX_MON_HUM_AVG", "MIN_MON_HUM_AVG"]]
+
+    vws_pr_m["SHRP_ID"] = vws_pr_m["SHRP_ID"].astype(str)
+    vws_te_m["SHRP_ID"] = vws_te_m["SHRP_ID"].astype(str)
+    vws_wi_m["SHRP_ID"] = vws_wi_m["SHRP_ID"].astype(str)
+    vws_hu_m["SHRP_ID"] = vws_hu_m["SHRP_ID"].astype(str)
+
+    vws_pr_a["SHRP_ID"] = vws_pr_a["SHRP_ID"].astype(str)
+    vws_te_a["SHRP_ID"] = vws_te_a["SHRP_ID"].astype(str)
+    vws_wi_a["SHRP_ID"] = vws_wi_a["SHRP_ID"].astype(str)
+    vws_hu_a["SHRP_ID"] = vws_hu_a["SHRP_ID"].astype(str)
 
     df_month_vws = vws_pr_m.merge(vws_te_m, how="outer", on=["SHRP_ID", "STATE_CODE", "YEAR", "MONTH"])
     df_month_vws = df_month_vws.merge(vws_wi_m, how="outer", on=["SHRP_ID", "STATE_CODE", "YEAR", "MONTH"])
@@ -758,9 +757,9 @@ def main(xls_file, csv_path, xls_path):
         #         "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
         start_time = time.time()
 
-        extract_iri(csv_tables[n], xls_file) if n == 0 else 0
-        extract_def(csv_tables[n], xls_file) if n == 1 else 0
-        extract_skn(csv_tables[n], xls_file) if n == 2 else 0
+        # extract_iri(csv_tables[n], xls_file) if n == 0 else 0
+        # extract_def(csv_tables[n], xls_file) if n == 1 else 0
+        # extract_skn(csv_tables[n], xls_file) if n == 2 else 0
         extract_snu(csv_tables[n], xls_file) if n == 3 else 0
         extract_vws(csv_tables[n], xls_file) if n == 4 else 0
         extract_trf(csv_tables[n], xls_file) if n == 5 else 0
