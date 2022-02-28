@@ -202,6 +202,35 @@ def extract_snu(save_path, snu_filename, snu_sheet="TRF_ESAL_INPUTS_SUMMARY"):
     save_csv(save_path, snu_list)
 
 
+def extract_cnd(p_path, p_file, p_sheet="EXPERIMENT_SECTION"):
+    df = pandas.read_excel(io=p_file, sheet_name=p_sheet)
+    df = df[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "CN_ASSIGN_DATE"]]
+    df["SHRP_ID"] = df["SHRP_ID"].astype(str)
+
+    cnd_list = [[column for column in df.columns]]
+    for values in df.values:
+        cnd_list.append([value for value in values])
+
+    # Append values
+    for values in df.values:
+        cnd_list.append([value for value in values])
+
+    cnd_result = deepcopy(cnd_list)
+    cnd_result[0].append("MAX_CN")
+    #
+    for i in range(1, len(cnd_result)):
+        result = max(filter(lambda x:
+                            x[cnd_list[0].index("STATE_CODE")] == cnd_result[i][
+                                cnd_result[0].index("STATE_CODE")] and
+                            x[cnd_list[0].index("SHRP_ID")] == cnd_result[i][cnd_result[0].index("SHRP_ID")],
+                            cnd_list),
+                     key=itemgetter(cnd_list[0].index("CONSTRUCTION_NO")))[cnd_list[0].index("CONSTRUCTION_NO")]
+
+        cnd_result[i].append(result)
+
+    save_csv(p_path, cnd_result)
+
+
 def extract_trf(p_path, p_file, p_sheet=("TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL", "EXPERIMENT_SECTION")):
     """
     Extract, prepare and unify data from historic and LTPP traffic estimation tables
@@ -217,7 +246,9 @@ def extract_trf(p_path, p_file, p_sheet=("TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL"
     df_trf_ltpp = pandas.read_excel(io=p_file, sheet_name=p_sheet[1])
 
     df_trf_hist = df_trf_hist.rename(columns={"YEAR_HIST_EST": "YEAR"})
+    df_trf_hist["SHRP_ID"] = df_trf_hist["SHRP_ID"].astype(str)
     df_trf_ltpp = df_trf_ltpp.rename(columns={"YEAR_MON_EST": "YEAR"})
+    df_trf_ltpp["SHRP_ID"] = df_trf_ltpp["SHRP_ID"].astype(str)
 
     df_trf = df_trf_hist.merge(df_trf_ltpp, how="outer",
                                on=["SHRP_ID", "STATE_CODE", "YEAR", "AADT_ALL_VEHIC", "AADT_TRUCK_COMBO",
@@ -232,6 +263,7 @@ def extract_trf(p_path, p_file, p_sheet=("TRF_HIST_EST_ESAL", "TRF_MON_EST_ESAL"
 
     df_cnd = pandas.read_excel(io=p_file, sheet_name=p_sheet[2])
     df_cnd = df_cnd[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "CN_ASSIGN_DATE"]]
+    df_cnd["SHRP_ID"] = df_cnd["SHRP_ID"].astype(str)
 
     # -------------------------------------------------------------------------------
 
@@ -362,6 +394,7 @@ def extract_vws_cn(save_path, vws_list, vws_filename):
     """
     Take VWS unified data and accumulate values depending on Construction Number assign date
 
+    :param vws_filename:
     :param save_path: path of output file
     :param vws_list: VWS unified data
     :return:
@@ -745,24 +778,20 @@ def main(xls_file, csv_path, xls_path):
         print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
 
     # CSV output file addresses
-    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "snu.csv", "vws.csv", "trf.csv"]]
-
-    # if question:
-    #     question = question_yn("\U0001F4BB\U0001F4AC Do you want to start a clean process?")
+    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "snu.csv", "cnd.csv", "vws.csv", "trf.csv"]]
 
     total_time = 0
 
     for n in range(0, len(csv_tables)):
-        # if not os.path.isfile(csv_tables[k]) or (os.path.isfile(csv_tables[k]) and (question or question_yn(
-        #         "\U0001F4BB\U0001F4AC File \"%s\" already exists. Regenerate?" % csv_tables[k]))):
         start_time = time.time()
 
-        # extract_iri(csv_tables[n], xls_file) if n == 0 else 0
-        # extract_def(csv_tables[n], xls_file) if n == 1 else 0
-        # extract_skn(csv_tables[n], xls_file) if n == 2 else 0
+        extract_iri(csv_tables[n], xls_file) if n == 0 else 0
+        extract_def(csv_tables[n], xls_file) if n == 1 else 0
+        extract_skn(csv_tables[n], xls_file) if n == 2 else 0
         extract_snu(csv_tables[n], xls_file) if n == 3 else 0
-        extract_vws(csv_tables[n], xls_file) if n == 4 else 0
-        extract_trf(csv_tables[n], xls_file) if n == 5 else 0
+        extract_cnd(csv_tables[n], xls_file) if n == 4 else 0
+        extract_vws(csv_tables[n], xls_file) if n == 5 else 0
+        extract_trf(csv_tables[n], xls_file) if n == 6 else 0
 
         partial_time = time.time() - start_time
         total_time += partial_time
