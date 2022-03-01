@@ -110,21 +110,24 @@ def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
 
 
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
+    # Only for testing purposes
+    # table_number = 10
+
     if p_table == "pci":
         table_number = len(p_pci)
-        table_master = deepcopy(p_pci)
+        table_master = deepcopy(p_pci[0:table_number])
         table_dating = "SURVEY_DATE"
     elif p_table == "iri":
         table_number = len(p_iri)
-        table_master = deepcopy(p_iri)
+        table_master = deepcopy(p_iri[0:table_number])
         table_dating = "VISIT_DATE"
     elif p_table == "def":
         table_number = len(p_def)
-        table_master = deepcopy(p_def)
+        table_master = deepcopy(p_def[0:table_number])
         table_dating = "TEST_DATE"
     else:
         table_number = len(p_skn)
-        table_master = deepcopy(p_skn)
+        table_master = deepcopy(p_skn[0:table_number])
         table_dating = "FRICTION_DATE"
 
     # == PCI ==
@@ -247,6 +250,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 table_master[i].extend([""] * 2)
             sys.stdout.write("\r- SKN %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
         print("")
+    else:
+        table_master[0][table_master[0].index("FRICTION_NO_END")] = "SKID_NUMBER"
 
     # == CND ==
 
@@ -329,7 +334,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
     # == VWS ==
 
-    table_master[0].extend(p_vws[0][4:len(p_vws[0])])
+    table_master[0].extend(p_vws[0][4:-3] + p_vws[0][-2:])
     count = 0
 
     for i in range(1, table_number):
@@ -348,93 +353,209 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
-            table_master[i].extend(nearest[0][4:len(nearest[0])])
+            table_master[i].extend(nearest[0][4:-3] + nearest[0][-2:])
             count += 1
         else:
-            table_master[i].extend([""] * 16)
+            table_master[i].extend([""] * 19)
 
         sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
-    table_master = form_table(table_master)
+    table_master = form_table(table_master, table_dating, p_table)
 
     save_csv("./res/master_" + p_table + ".csv", table_master)
 
 
-def form_table(table):
+def form_table(table, table_dating, type):
     for i in range(1, len(table)):
-        table[i] = [table[i][table[0].index("STATE_CODE")], table[i][table[0].index("STATE_CODE_EXP")],
-                    table[i][table[0].index("SHRP_ID")], table[i][table[0].index("SURVEY_DATE")],
-                    table[i][table[0].index("CONSTRUCTION_NO")], table[i][table[0].index("GATOR_CRACK_A_L")],
-                    table[i][table[0].index("GATOR_CRACK_A_M")], table[i][table[0].index("GATOR_CRACK_A_H")],
-                    table[i][table[0].index("BLK_CRACK_A_L")], table[i][table[0].index("BLK_CRACK_A_M")],
-                    table[i][table[0].index("BLK_CRACK_A_H")], table[i][table[0].index("EDGE_CRACK_L_L")],
-                    table[i][table[0].index("EDGE_CRACK_L_M")], table[i][table[0].index("EDGE_CRACK_L_H")],
-                    table[i][table[0].index("LONG_CRACK_WP_L_L")], table[i][table[0].index("LONG_CRACK_WP_L_M")],
-                    table[i][table[0].index("LONG_CRACK_WP_L_H")], table[i][table[0].index("LONG_CRACK_WP_SEAL_L_L")],
-                    table[i][table[0].index("LONG_CRACK_WP_SEAL_L_M")],
-                    table[i][table[0].index("LONG_CRACK_WP_SEAL_L_H")], table[i][table[0].index("LONG_CRACK_NWP_L_L")],
-                    table[i][table[0].index("LONG_CRACK_NWP_L_M")], table[i][table[0].index("LONG_CRACK_NWP_L_H")],
-                    table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_L")],
-                    table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_M")],
-                    table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_H")], table[i][table[0].index("TRANS_CRACK_NO_L")],
-                    table[i][table[0].index("TRANS_CRACK_NO_M")], table[i][table[0].index("TRANS_CRACK_NO_H")],
-                    table[i][table[0].index("TRANS_CRACK_L_L")], table[i][table[0].index("TRANS_CRACK_L_M")],
-                    table[i][table[0].index("TRANS_CRACK_L_H")], table[i][table[0].index("TRANS_CRACK_SEAL_L_L")],
-                    table[i][table[0].index("TRANS_CRACK_SEAL_L_M")], table[i][table[0].index("TRANS_CRACK_SEAL_L_H")],
-                    table[i][table[0].index("PATCH_NO_L")], table[i][table[0].index("PATCH_NO_M")],
-                    table[i][table[0].index("PATCH_NO_H")], table[i][table[0].index("PATCH_A_L")],
-                    table[i][table[0].index("PATCH_A_M")], table[i][table[0].index("PATCH_A_H")],
-                    table[i][table[0].index("POTHOLES_NO_L")], table[i][table[0].index("POTHOLES_NO_M")],
-                    table[i][table[0].index("POTHOLES_NO_H")], table[i][table[0].index("POTHOLES_A_L")],
-                    table[i][table[0].index("POTHOLES_A_M")], table[i][table[0].index("POTHOLES_A_H")],
-                    table[i][table[0].index("SHOVING_NO")], table[i][table[0].index("SHOVING_A")],
-                    table[i][table[0].index("BLEEDING")], table[i][table[0].index("POLISH_AGG_A")],
-                    table[i][table[0].index("RAVELING")], table[i][table[0].index("PUMPING_NO")],
-                    table[i][table[0].index("PUMPING_L")], table[i][table[0].index("OTHER")],
-                    table[i][table[0].index("SURVEY_WIDTH")], table[i][table[0].index("WP_LENGTH_CRACKED")],
-                    table[i][table[0].index("TRANS_CRACK_L_GT183")], table[i][table[0].index("PCI")],
-                    table[i][table[0].index("IRI")], table[i][table[0].index("IRI_YEAR_DIF")],
-                    table[i][table[0].index("F1_DEF_AVG")], table[i][table[0].index("F1_DEF_MAX")],
-                    table[i][table[0].index("F1_DEF_CHR")], table[i][table[0].index("F3_DEF_AVG")],
-                    table[i][table[0].index("F3_DEF_MAX")], table[i][table[0].index("F3_DEF_CHR")],
-                    table[i][table[0].index("DEF_YEAR_DIF")], table[i][table[0].index("SKID_NUMBER")],
-                    table[i][table[0].index("SKN_YEAR_DIF")], table[i][table[0].index("Pa")],
-                    table[i][table[0].index("AADT")], table[i][table[0].index("AADTT")],
-                    table[i][table[0].index("KESAL")], table[i][table[0].index("SN")],
-                    table[i][table[0].index("TOTAL_ANN_PRECIP")], table[i][table[0].index("TOTAL_MON_PRECIP")],
-                    table[i][table[0].index("TOTAL_SNOWFALL_YR")], table[i][table[0].index("TOTAL_SNOWFALL_MONTH")],
-                    table[i][table[0].index("MEAN_ANN_TEMP_AVG")], table[i][table[0].index("MEAN_MON_TEMP_AVG")],
-                    table[i][table[0].index("FREEZE_INDEX_YR")], table[i][table[0].index("FREEZE_INDEX_MONTH")],
-                    table[i][table[0].index("FREEZE_THAW_YR")], table[i][table[0].index("FREEZE_THAW_MONTH")],
-                    table[i][table[0].index("MEAN_ANN_WIND_AVG")], table[i][table[0].index("MEAN_MON_WIND_AVG")],
-                    table[i][table[0].index("MAX_ANN_HUM_AVG")], table[i][table[0].index("MAX_MON_HUM_AVG")],
-                    table[i][table[0].index("MIN_ANN_HUM_AVG")], table[i][table[0].index("MIN_MON_HUM_AVG")],
-                    table[i][table[0].index("CLIMATIC ZONE")], table[i][table[0].index("CONSTRUCTION_NO")],
-                    table[i][table[0].index("MON_PREC_CUM")], table[i][table[0].index("MON_SNOW_CUM")]]
+        columns_gen = [
+            # General columns
+            table[i][table[0].index("STATE_CODE")], table[i][table[0].index("SHRP_ID")],
+            table[i][table[0].index(table_dating)], table[i][table[0].index("CONSTRUCTION_NO")],
+        ]
+        columns_pci = [
+            # Pavement distress + PCI
+            table[i][table[0].index("GATOR_CRACK_A_L")], table[i][table[0].index("GATOR_CRACK_A_M")],
+            table[i][table[0].index("GATOR_CRACK_A_H")], table[i][table[0].index("BLK_CRACK_A_L")],
+            table[i][table[0].index("BLK_CRACK_A_M")], table[i][table[0].index("BLK_CRACK_A_H")],
+            table[i][table[0].index("EDGE_CRACK_L_L")], table[i][table[0].index("EDGE_CRACK_L_M")],
+            table[i][table[0].index("EDGE_CRACK_L_H")], table[i][table[0].index("LONG_CRACK_WP_L_L")],
+            table[i][table[0].index("LONG_CRACK_WP_L_M")], table[i][table[0].index("LONG_CRACK_WP_L_H")],
+            table[i][table[0].index("LONG_CRACK_WP_SEAL_L_L")], table[i][table[0].index("LONG_CRACK_WP_SEAL_L_M")],
+            table[i][table[0].index("LONG_CRACK_WP_SEAL_L_H")], table[i][table[0].index("LONG_CRACK_NWP_L_L")],
+            table[i][table[0].index("LONG_CRACK_NWP_L_M")], table[i][table[0].index("LONG_CRACK_NWP_L_H")],
+            table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_L")],
+            table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_M")],
+            table[i][table[0].index("LONG_CRACK_NWP_SEAL_L_H")], table[i][table[0].index("TRANS_CRACK_NO_L")],
+            table[i][table[0].index("TRANS_CRACK_NO_M")], table[i][table[0].index("TRANS_CRACK_NO_H")],
+            table[i][table[0].index("TRANS_CRACK_L_L")], table[i][table[0].index("TRANS_CRACK_L_M")],
+            table[i][table[0].index("TRANS_CRACK_L_H")], table[i][table[0].index("TRANS_CRACK_SEAL_L_L")],
+            table[i][table[0].index("TRANS_CRACK_SEAL_L_M")], table[i][table[0].index("TRANS_CRACK_SEAL_L_H")],
+            table[i][table[0].index("PATCH_NO_L")], table[i][table[0].index("PATCH_NO_M")],
+            table[i][table[0].index("PATCH_NO_H")], table[i][table[0].index("PATCH_A_L")],
+            table[i][table[0].index("PATCH_A_M")], table[i][table[0].index("PATCH_A_H")],
+            table[i][table[0].index("POTHOLES_NO_L")], table[i][table[0].index("POTHOLES_NO_M")],
+            table[i][table[0].index("POTHOLES_NO_H")], table[i][table[0].index("POTHOLES_A_L")],
+            table[i][table[0].index("POTHOLES_A_M")], table[i][table[0].index("POTHOLES_A_H")],
+            table[i][table[0].index("SHOVING_NO")], table[i][table[0].index("SHOVING_A")],
+            table[i][table[0].index("BLEEDING")], table[i][table[0].index("POLISH_AGG_A")],
+            table[i][table[0].index("RAVELING")], table[i][table[0].index("PUMPING_NO")],
+            table[i][table[0].index("PUMPING_L")], table[i][table[0].index("OTHER")],
+            table[i][table[0].index("SURVEY_WIDTH")], table[i][table[0].index("WP_LENGTH_CRACKED")],
+            table[i][table[0].index("TRANS_CRACK_L_GT183")], table[i][table[0].index("PCI")]
+        ]
+
+        columns_iri = [
+            # IRI
+            table[i][table[0].index("IRI")],
+        ]
+
+        columns_def = [
+            # DEFLECTIONS
+            table[i][table[0].index("F1_DEF_AVG")], table[i][table[0].index("F1_DEF_MAX")],
+            table[i][table[0].index("F1_DEF_CHR")], table[i][table[0].index("F3_DEF_AVG")],
+            table[i][table[0].index("F3_DEF_MAX")], table[i][table[0].index("F3_DEF_CHR")]
+        ]
+
+        columns_skn = [
+            # SKID NUMBER
+            table[i][table[0].index("SKID_NUMBER")]
+        ]
+
+        columns_oth = [
+            # Pavement age
+            table[i][table[0].index("Pa")],
+
+            # Traffic
+            table[i][table[0].index("AADT")], table[i][table[0].index("AADTT")],
+            table[i][table[0].index("KESAL")],
+
+            # Structural Number
+            table[i][table[0].index("SN")],
+
+            # VWS
+            table[i][table[0].index("TOTAL_ANN_PRECIP")], table[i][table[0].index("TOTAL_MON_PRECIP")],
+            table[i][table[0].index("TOTAL_SNOWFALL_YR")], table[i][table[0].index("TOTAL_SNOWFALL_MONTH")],
+            table[i][table[0].index("MEAN_ANN_TEMP_AVG")], table[i][table[0].index("MEAN_MON_TEMP_AVG")],
+            table[i][table[0].index("FREEZE_INDEX_YR")], table[i][table[0].index("FREEZE_INDEX_MONTH")],
+            table[i][table[0].index("FREEZE_THAW_YR")], table[i][table[0].index("FREEZE_THAW_MONTH")],
+            table[i][table[0].index("MEAN_ANN_WIND_AVG")], table[i][table[0].index("MEAN_MON_WIND_AVG")],
+            table[i][table[0].index("MAX_ANN_HUM_AVG")], table[i][table[0].index("MAX_MON_HUM_AVG")],
+            table[i][table[0].index("MIN_ANN_HUM_AVG")], table[i][table[0].index("MIN_MON_HUM_AVG")],
+            table[i][table[0].index("CLIMATIC ZONE")], table[i][table[0].index("MON_PREC_CUM")],
+            table[i][table[0].index("MON_SNOW_CUM")]
+        ]
+
+        if type == "pci":
+            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
+            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
+            column_diff_skn = [table[i][table[0].index("DEF_YEAR_DIF")]]
+            table[i] = columns_gen + \
+                       columns_pci + \
+                       columns_iri + column_diff_iri + \
+                       columns_def + column_diff_def + \
+                       columns_skn + column_diff_skn + \
+                       columns_oth
+        elif type == "iri":
+            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
+            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
+            column_diff_skn = [table[i][table[0].index("DEF_YEAR_DIF")]]
+            table[i] = columns_gen + \
+                       columns_pci + column_diff_pci + \
+                       columns_iri + \
+                       columns_def + column_diff_def + \
+                       columns_skn + column_diff_skn + \
+                       columns_oth
+        elif type == "def":
+            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
+            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
+            column_diff_skn = [table[i][table[0].index("SKN_YEAR_DIF")]]
+            table[i] = columns_gen + \
+                       columns_pci + column_diff_pci + \
+                       columns_iri + column_diff_iri + \
+                       columns_def + \
+                       columns_skn + column_diff_skn + \
+                       columns_oth
+        else:
+            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
+            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
+            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
+            table[i] = columns_gen + \
+                       columns_pci + column_diff_pci + \
+                       columns_iri + column_diff_iri + \
+                       columns_def + column_diff_def + \
+                       columns_skn + \
+                       columns_oth
 
         sys.stdout.write("\r- VWS %d/%d: formando tabla" % (i + 1, len(table)))
         print("")
 
-    table[0] = ["STATE_CODE ", "STATE_CODE_EXP ", "SHRP_ID ", "SURVEY_DATE ", "CONSTRUCTION_NO ", "GATOR_CRACK_A_L ",
-                "GATOR_CRACK_A_M ", "GATOR_CRACK_A_H ", "BLK_CRACK_A_L ", "BLK_CRACK_A_M ", "BLK_CRACK_A_H ",
-                "EDGE_CRACK_L_L ", "EDGE_CRACK_L_M ", "EDGE_CRACK_L_H ", "LONG_CRACK_WP_L_L ", "LONG_CRACK_WP_L_M ",
-                "LONG_CRACK_WP_L_H ", "LONG_CRACK_WP_SEAL_L_L ", "LONG_CRACK_WP_SEAL_L_M ", "LONG_CRACK_WP_SEAL_L_H ",
-                "LONG_CRACK_NWP_L_L ", "LONG_CRACK_NWP_L_M ", "LONG_CRACK_NWP_L_H ", "LONG_CRACK_NWP_SEAL_L_L ",
-                "LONG_CRACK_NWP_SEAL_L_M ", "LONG_CRACK_NWP_SEAL_L_H ", "TRANS_CRACK_NO_L ", "TRANS_CRACK_NO_M ",
-                "TRANS_CRACK_NO_H ", "TRANS_CRACK_L_L ", "TRANS_CRACK_L_M ", "TRANS_CRACK_L_H ",
-                "TRANS_CRACK_SEAL_L_L ", "TRANS_CRACK_SEAL_L_M ", "TRANS_CRACK_SEAL_L_H ", "PATCH_NO_L ",
-                "PATCH_NO_M ", "PATCH_NO_H ", "PATCH_A_L ", "PATCH_A_M ", "PATCH_A_H ", "POTHOLES_NO_L ",
-                "POTHOLES_NO_M ", "POTHOLES_NO_H ", "POTHOLES_A_L ", "POTHOLES_A_M ", "POTHOLES_A_H ", "SHOVING_NO ",
-                "SHOVING_A ", "BLEEDING ", "POLISH_AGG_A ", "RAVELING ", "PUMPING_NO ", "PUMPING_L ", "OTHER ",
-                "SURVEY_WIDTH ", "WP_LENGTH_CRACKED ", "TRANS_CRACK_L_GT183 ", "PCI ", "IRI ", "IRI_YEAR_DIF ",
-                "F1_DEF_AVG ", "F1_DEF_MAX ", "F1_DEF_CHR ", "F3_DEF_AVG ", "F3_DEF_MAX ", "F3_DEF_CHR ",
-                "DEF_YEAR_DIF ", "SKID_NUMBER ", "SKN_YEAR_DIF ", "Pa ", "AADT ", "AADTT ", "KESAL ", "SN ",
-                "TOTAL_ANN_PRECIP ", "TOTAL_MON_PRECIP ", "TOTAL_SNOWFALL_YR ", "TOTAL_SNOWFALL_MONTH ",
-                "MEAN_ANN_TEMP_AVG ", "MEAN_MON_TEMP_AVG ", "FREEZE_INDEX_YR ", "FREEZE_INDEX_MONTH ",
-                "FREEZE_THAW_YR ", "FREEZE_THAW_MONTH ", "MEAN_ANN_WIND_AVG ", "MEAN_MON_WIND_AVG ",
-                "MAX_ANN_HUM_AVG ", "MAX_MON_HUM_AVG ", "MIN_ANN_HUM_AVG ", "MIN_MON_HUM_AVG ", "CLIMATIC ZONE ",
-                "CONSTRUCTION_NO ", "MON_PREC_CUM ", "MON_SNOW_CUM"]
+    headers_gen = ["STATE_CODE", "SHRP_ID", table_dating, "CONSTRUCTION_NO"]
+
+    headers_pci = ["GATOR_CRACK_A_L", "GATOR_CRACK_A_M", "GATOR_CRACK_A_H", "BLK_CRACK_A_L", "BLK_CRACK_A_M",
+                   "BLK_CRACK_A_H", "EDGE_CRACK_L_L", "EDGE_CRACK_L_M", "EDGE_CRACK_L_H", "LONG_CRACK_WP_L_L",
+                   "LONG_CRACK_WP_L_M", "LONG_CRACK_WP_L_H", "LONG_CRACK_WP_SEAL_L_L", "LONG_CRACK_WP_SEAL_L_M",
+                   "LONG_CRACK_WP_SEAL_L_H", "LONG_CRACK_NWP_L_L", "LONG_CRACK_NWP_L_M", "LONG_CRACK_NWP_L_H",
+                   "LONG_CRACK_NWP_SEAL_L_L", "LONG_CRACK_NWP_SEAL_L_M", "LONG_CRACK_NWP_SEAL_L_H", "TRANS_CRACK_NO_L",
+                   "TRANS_CRACK_NO_M", "TRANS_CRACK_NO_H", "TRANS_CRACK_L_L", "TRANS_CRACK_L_M", "TRANS_CRACK_L_H",
+                   "TRANS_CRACK_SEAL_L_L", "TRANS_CRACK_SEAL_L_M", "TRANS_CRACK_SEAL_L_H", "PATCH_NO_L", "PATCH_NO_M",
+                   "PATCH_NO_H", "PATCH_A_L", "PATCH_A_M", "PATCH_A_H", "POTHOLES_NO_L", "POTHOLES_NO_M",
+                   "POTHOLES_NO_H", "POTHOLES_A_L", "POTHOLES_A_M", "POTHOLES_A_H", "SHOVING_NO", "SHOVING_A",
+                   "BLEEDING", "POLISH_AGG_A", "RAVELING", "PUMPING_NO", "PUMPING_L", "OTHER", "SURVEY_WIDTH",
+                   "WP_LENGTH_CRACKED", "TRANS_CRACK_L_GT183", "PCI"]
+
+    headers_iri = ["IRI"]
+
+    headers_def = ["F1_DEF_AVG", "F1_DEF_MAX", "F1_DEF_CHR", "F3_DEF_AVG", "F3_DEF_MAX", "F3_DEF_CHR"]
+
+    headers_skn = ["SKID_NUMBER"]
+
+    headers_oth = ["Pa", "AADT", "AADTT", "KESAL", "SN", "TOTAL_ANN_PRECIP", "TOTAL_MON_PRECIP", "TOTAL_SNOWFALL_YR",
+                   "TOTAL_SNOWFALL_MONTH", "MEAN_ANN_TEMP_AVG", "MEAN_MON_TEMP_AVG", "FREEZE_INDEX_YR",
+                   "FREEZE_INDEX_MONTH", "FREEZE_THAW_YR", "FREEZE_THAW_MONTH", "MEAN_ANN_WIND_AVG",
+                   "MEAN_MON_WIND_AVG", "MAX_ANN_HUM_AVG", "MAX_MON_HUM_AVG", "MIN_ANN_HUM_AVG", "MIN_MON_HUM_AVG",
+                   "CLIMATIC ZONE", "MON_PREC_CUM", "MON_SNOW_CUM"]
+
+    if type == "pci":
+        header_diff_iri = ["IRI_YEAR_DIF"]
+        header_diff_def = ["DEF_YEAR_DIF"]
+        header_diff_skn = ["SKN_YEAR_DIF"]
+        table[0] = headers_gen + \
+                   headers_pci + \
+                   headers_iri + header_diff_iri + \
+                   headers_def + header_diff_def + \
+                   headers_skn + header_diff_skn + \
+                   headers_oth
+    elif type == "iri":
+        header_diff_pci = ["PCI_YEAR_DIF"]
+        header_diff_def = ["DEF_YEAR_DIF"]
+        header_diff_skn = ["SKN_YEAR_DIF"]
+        table[0] = headers_gen + \
+                   headers_pci + header_diff_pci + \
+                   headers_iri + \
+                   headers_def + header_diff_def + \
+                   headers_skn + header_diff_skn + \
+                   headers_oth
+    elif type == "def":
+        header_diff_pci = ["PCI_YEAR_DIF"]
+        header_diff_iri = ["IRI_YEAR_DIF"]
+        header_diff_skn = ["SKN_YEAR_DIF"]
+        table[0] = headers_gen + \
+                   headers_pci + header_diff_pci + \
+                   headers_iri + header_diff_iri + \
+                   headers_def + \
+                   headers_skn + header_diff_skn + \
+                   headers_oth
+    else:
+        header_diff_pci = ["PCI_YEAR_DIF"]
+        header_diff_iri = ["IRI_YEAR_DIF"]
+        header_diff_def = ["DEF_YEAR_DIF"]
+        table[0] = headers_gen + \
+                   headers_pci + header_diff_pci + \
+                   headers_iri + header_diff_iri + \
+                   headers_def + header_diff_def + \
+                   headers_skn + \
+                   headers_oth
 
     return table
 
