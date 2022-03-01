@@ -120,12 +120,13 @@ def fix_pci_date(p_table):
     return p_table
 
 
-def etr(p_total, p_index, p_time):
-    seconds = (-1 + p_total - p_index) * (time.time() - p_time)
+def etr(p_total, p_index, p_time, p_for):
+    p_for += (time.time() - p_time)
+    seconds = (-1 + p_total - p_index) * p_for / p_index
     hh = math.floor(seconds / 3600)
     mm = math.floor(seconds / 60) - (hh * 60)
     ss = math.floor(seconds) - (hh * 3600) - (mm * 60)
-    return str(int(hh)).zfill(2) + ":" + str(int(mm)).zfill(2) + ":" + str(int(ss)).zfill(2)
+    return str(int(hh)).zfill(2) + ":" + str(int(mm)).zfill(2) + ":" + str(int(ss)).zfill(2), p_for
 
 
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
@@ -149,6 +150,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master = deepcopy(p_skn[0:table_number])
         table_dating = "FRICTION_DATE"
 
+    print("(i) Generating %s master table..." % p_table.upper())
+
     # == PCI ==
 
     if p_table != "pci":
@@ -156,6 +159,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master[0].append("PCI_YEAR_DIF")
         count = 0
 
+        for_time = 0
         for i in range(1, table_number):
             ini_time = time.time()
 
@@ -176,8 +180,9 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
             else:
                 table_master[i].extend([""] * 55)
 
+            etr_val, for_time = etr(table_number, i, ini_time, for_time)
             sys.stdout.write(
-                "\r- PCI %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+                "\r- PCI %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
         print("")
     else:
         table_master[0].append("PCI_YEAR_DIF")
@@ -190,10 +195,11 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master[0].extend(["IRI", "IRI_YEAR_DIF"])
         count = 0
 
+        for_time = 0
         for i in range(1, table_number):
             ini_time = time.time()
 
-            # Lista ordenada de valores por diferencia de fechas
+            # Ordered list by date difference
             nearest = sorted(lc_iri(p_iri,
                                     table_master[i][table_master[0].index("STATE_CODE")],
                                     table_master[i][table_master[0].index("SHRP_ID")],
@@ -201,7 +207,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                              key=lambda x: abs(date_diff(x[p_iri[0].index("VISIT_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
-            # Añade el índice y diferencia de fechas del primer valor de la lista
+            # Add index and date difference from head od list
             if len(nearest) > 0:
                 table_master[i].append(nearest[0][p_iri[0].index("IRI")])
                 table_master[i].append(date_diff(nearest[0][p_iri[0].index("VISIT_DATE")],
@@ -209,8 +215,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 count += 1
             else:
                 table_master[i].extend([""] * 2)
+
+            etr_val, for_time = etr(table_number, i, ini_time, for_time)
             sys.stdout.write(
-                "\r- IRI %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+                "\r- IRI %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
         print("")
     else:
         table_master[0].append("IRI_YEAR_DIF")
@@ -224,10 +232,11 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master[0].append("DEF_YEAR_DIF")
         count = 0
 
+        for_time = 0
         for i in range(1, table_number):
             ini_time = time.time()
 
-            # Lista ordenada de valores por diferencia de fechas
+            # Ordered list by date difference
             nearest = sorted(lc_def(p_def,
                                     table_master[i][table_master[0].index("STATE_CODE")],
                                     table_master[i][table_master[0].index("SHRP_ID")],
@@ -235,7 +244,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                              key=lambda x: abs(date_diff(x[p_def[0].index("TEST_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
-            # Añade el índice y diferencia de fechas del primer valor de la lista
+            # Add index and date difference from head od list
             if len(nearest) > 0:
                 table_master[i].extend(nearest[0][4:len(nearest[0])])
                 table_master[i].append(date_diff(nearest[0][p_def[0].index("TEST_DATE")],
@@ -243,8 +252,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 count += 1
             else:
                 table_master[i].extend([""] * 7)
+
+            etr_val, for_time = etr(table_number, i, ini_time, for_time)
             sys.stdout.write(
-                "\r- DEF %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+                "\r- DEF %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
         print("")
     else:
         table_master[0].append("DEF_YEAR_DIF")
@@ -257,10 +268,11 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
         count = 0
 
+        for_time = 0
         for i in range(1, table_number):
             ini_time = time.time()
 
-            # Lista ordenada de valores por diferencia de fechas
+            # Ordered list by date difference
             nearest = sorted(lc_skn(p_skn,
                                     table_master[i][table_master[0].index("STATE_CODE")],
                                     table_master[i][table_master[0].index("SHRP_ID")],
@@ -268,7 +280,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                              key=lambda x: abs(date_diff(x[p_skn[0].index("FRICTION_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
-            # Añade el índice y diferencia de fechas del primer valor de la lista
+            # Add index and date difference from head od list
             if len(nearest) > 0:
                 table_master[i].append(nearest[0][p_skn[0].index("FRICTION_NO_END")])
                 table_master[i].append(date_diff(nearest[0][p_skn[0].index("FRICTION_DATE")],
@@ -276,11 +288,12 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 count += 1
             else:
                 table_master[i].extend([""] * 2)
+
+            etr_val, for_time = etr(table_number, i, ini_time, for_time)
             sys.stdout.write(
-                "\r- SKN %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+                "\r- SKN %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
         print("")
     else:
-        table_master[0][table_master[0].index("FRICTION_NO_END")] = "SKID_NUMBER"
         table_master[0].append("SKN_YEAR_DIF")
         for i in range(1, table_number):
             table_master[i].append("")
@@ -290,16 +303,17 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     table_master[0].append("Pa")
     count = 0
 
+    for_time = 0
     for i in range(1, table_number):
         ini_time = time.time()
 
-        # Lista de valores
+        # Value list
         nearest = lc_cnd(p_cnd,
                          table_master[i][table_master[0].index("STATE_CODE")],
                          table_master[i][table_master[0].index("SHRP_ID")],
                          table_master[i][table_master[0].index("CONSTRUCTION_NO")])
 
-        # Añade la diferencia de fechas del primer valor de la lista
+        # Add date difference from head od list
         if len(nearest) > 0:
             table_master[i].append(date_diff(table_master[i][table_master[0].index(table_dating)],
                                              nearest[0][p_cnd[0].index("CN_ASSIGN_DATE")]) / 365)
@@ -307,8 +321,9 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         else:
             table_master[i].append("")
 
+        etr_val, for_time = etr(table_number, i, ini_time, for_time)
         sys.stdout.write(
-            "\r- CND %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+            "\r- CND %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
     print("")
 
     # == TRF ==
@@ -316,23 +331,25 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     table_master[0].extend(p_trf[0][3:6])
     count = 0
 
+    for_time = 0
     for i in range(1, table_number):
         ini_time = time.time()
 
-        # Lista de valores
+        # Value list
         nearest = lc_trf(p_trf, table_master[i][table_master[0].index("STATE_CODE")],
                          table_master[i][table_master[0].index("SHRP_ID")],
                          int_year(table_master[i][table_master[0].index(table_dating)]))
 
-        # Añade el índice del primer valor de la lista
+        # Add index from head od list
         if len(nearest) > 0:
             table_master[i].extend(nearest[0][3:6])
             count += 1
         else:
             table_master[i].extend([""] * 3)
 
+        etr_val, for_time = etr(table_number, i, ini_time, for_time)
         sys.stdout.write(
-            "\r- TRF %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+            "\r- TRF %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
     print("")
 
     # == SNU ==
@@ -340,24 +357,26 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     table_master[0].append("SN")
     count = 0
 
+    for_time = 0
     for i in range(1, table_number):
         ini_time = time.time()
 
-        # Lista de valores
+        # Value list
         nearest = lc_snu(p_snu,
                          table_master[i][table_master[0].index("STATE_CODE")],
                          table_master[i][table_master[0].index("SHRP_ID")],
                          table_master[i][table_master[0].index("CONSTRUCTION_NO")])
 
-        # Añade el índice del primer valor de la lista
+        # Add index from head od list
         if len(nearest) > 0:
             table_master[i].append(nearest[0][p_snu[0].index("SN_VALUE")])
             count += 1
         else:
             table_master[i].append("")
 
+        etr_val, for_time = etr(table_number, i, ini_time, for_time)
         sys.stdout.write(
-            "\r- SNU %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+            "\r- SNU %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
     print("")
 
     # == VWS ==
@@ -365,24 +384,26 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     table_master[0].extend(p_vws[0][4:-3] + p_vws[0][-2:])
     count = 0
 
+    for_time = 0
     for i in range(1, table_number):
         ini_time = time.time()
 
-        # Lista de valores
+        # Value list
         nearest = lc_vws(p_vws, table_master[i][table_master[0].index("STATE_CODE")],
                          table_master[i][table_master[0].index("SHRP_ID")],
                          int_year(table_master[i][table_master[0].index(table_dating)]),
                          int_month(table_master[i][table_master[0].index(table_dating)]))
 
-        # Añade el índice del primer valor de la lista
+        # Add index from head od list
         if len(nearest) > 0:
             table_master[i].extend(nearest[0][4:-3] + nearest[0][-2:])
             count += 1
         else:
             table_master[i].extend([""] * 19)
 
+        etr_val, for_time = etr(table_number, i, ini_time, for_time)
         sys.stdout.write(
-            "\r- VWS %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr(table_number, i, ini_time)))
+            "\r- VWS %d/%d: added %s rows (ETR: %s)" % (i, table_number - 1, count, etr_val))
     print("")
 
     table_master = form_table(table_master, table_dating)
@@ -580,7 +601,7 @@ def form_table(table, table_dating):
             table[i][table[0].index("DEF_YEAR_DIF")],
 
             # SKID NUMBER
-            table[i][table[0].index("SKID_NUMBER")], table[i][table[0].index("DEF_YEAR_DIF")],
+            table[i][table[0].index("FRICTION_NO_END")], table[i][table[0].index("SKN_YEAR_DIF")],
 
             # Pavement age
             table[i][table[0].index("Pa")],
@@ -604,7 +625,7 @@ def form_table(table, table_dating):
             table[i][table[0].index("MON_SNOW_CUM")]
         ]
 
-        sys.stdout.write("\r- VWS %d/%d: formando tabla" % (i + 1, len(table)))
+        sys.stdout.write("\r- VWS %d/%d: shaping the table..." % (i + 1, len(table)))
         print("")
 
     table[0] = [
@@ -700,10 +721,10 @@ if __name__ == '__main__':
 
     # =====================================================================
 
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
 
