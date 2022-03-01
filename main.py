@@ -587,8 +587,8 @@ def form_table(table, table_dating):
             table[i][table[0].index("MON_SNOW_CUM")]
         ]
 
-        sys.stdout.write("\r- VWS %d/%d: shaping the table..." % (i + 1, len(table)))
-        print("")
+        sys.stdout.write("\r- Shaping the table (%d/%d)" % (i + 1, len(table)))
+    print("")
 
     table[0] = [
         # General columns
@@ -658,8 +658,8 @@ if __name__ == '__main__':
 
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn")
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
 
