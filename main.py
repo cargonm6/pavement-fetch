@@ -42,8 +42,8 @@ def row_to_str(p_row):
 
 def int_month(date):
     if str(date)[2:3] == "/":
-        # Format: dd/mm/aaaa
-        return int(str(date)[3:5])
+        # Format: mm/dd/aaaa
+        return int(str(date)[0:2])
     else:
         # Format: yyyy-mm-dd
         return int(str(date)[5:7])
@@ -51,7 +51,7 @@ def int_month(date):
 
 def int_year(date):
     if str(date)[2:3] == "/":
-        # Format: dd/mm/aaaa
+        # Format: mm/dd/aaaa
         return int(str(date)[6:10])
     else:
         # Format: yyyy-mm-dd
@@ -111,7 +111,7 @@ def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
 
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
     # Only for testing purposes
-    # table_number = 10
+    # table_number = 20
 
     if p_table == "pci":
         table_number = len(p_pci)
@@ -146,7 +146,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                                           x[p_pci[0].index("CONSTRUCTION_NO")]] == [
                                              table_master[i][table_master[0].index("SHRP_ID")],
                                              table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_pci)),
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
+                                         x[p_pci[0].index("PCI")] != "", p_pci)),
                              key=lambda x: abs(date_diff(x[p_pci[0].index("SURVEY_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -175,7 +176,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                                           x[p_iri[0].index("CONSTRUCTION_NO")]] == [
                                              table_master[i][table_master[0].index("SHRP_ID")],
                                              table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_iri)),
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
+                                         x[p_iri[0].index("IRI")] != "", p_iri)),
                              key=lambda x: abs(date_diff(x[p_iri[0].index("VISIT_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -206,7 +208,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                                           x[p_def[0].index("CONSTRUCTION_NO")]] == [
                                              table_master[i][table_master[0].index("SHRP_ID")],
                                              table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_def)),
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
+                                         x[4] != "", p_def)),
                              key=lambda x: abs(date_diff(x[p_def[0].index("TEST_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -236,7 +239,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                                           x[p_skn[0].index("CONSTRUCTION_NO")]] == [
                                              table_master[i][table_master[0].index("SHRP_ID")],
                                              table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_skn)),
+                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
+                                         x[p_skn[0].index("FRICTION_NO_END")] != "", p_skn)),
                              key=lambda x: abs(date_diff(x[p_skn[0].index("FRICTION_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
