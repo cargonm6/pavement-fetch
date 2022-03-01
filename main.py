@@ -109,6 +109,15 @@ def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
     save_csv(p_path_res + p_code + "_join.csv", p_result)
 
 
+def fix_pci_date(table_master):
+    for i in range(1, len(table_master)):
+        table_master[i][table_master[0].index("SURVEY_DATE")] = \
+            table_master[i][table_master[0].index("SURVEY_DATE")][6:] + "-" + \
+            table_master[i][table_master[0].index("SURVEY_DATE")][0:2] + "-" + \
+            table_master[i][table_master[0].index("SURVEY_DATE")][3:5] + " 00:00:00"
+    return table_master
+
+
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
     # Only for testing purposes
     # table_number = 20
@@ -140,14 +149,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         for i in range(1, table_number):
 
             # Lista ordenada de valores por diferencia de fechas
-            nearest = sorted(list(filter(lambda x:
-                                         [x[p_pci[0].index("SHRP_ID")],
-                                          x[p_pci[0].index("STATE_CODE")],
-                                          x[p_pci[0].index("CONSTRUCTION_NO")]] == [
-                                             table_master[i][table_master[0].index("SHRP_ID")],
-                                             table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
-                                         x[p_pci[0].index("PCI")] != "", p_pci)),
+            nearest = sorted(lc_pci(p_pci,
+                                    table_master[i][table_master[0].index("STATE_CODE")],
+                                    table_master[i][table_master[0].index("SHRP_ID")],
+                                    table_master[i][table_master[0].index("CONSTRUCTION_NO")]),
                              key=lambda x: abs(date_diff(x[p_pci[0].index("SURVEY_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -161,6 +166,12 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 table_master[i].extend([""] * 55)
             sys.stdout.write("\r- PCI %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
         print("")
+    else:
+        table_master[0].append("PCI_YEAR_DIF")
+        for i in range(1, table_number):
+            table_master[i].append("")
+
+    table_master = fix_pci_date(table_master)
 
     # == IRI ==
 
@@ -170,14 +181,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
         for i in range(1, table_number):
             # Lista ordenada de valores por diferencia de fechas
-            nearest = sorted(list(filter(lambda x:
-                                         [x[p_iri[0].index("SHRP_ID")],
-                                          x[p_iri[0].index("STATE_CODE")],
-                                          x[p_iri[0].index("CONSTRUCTION_NO")]] == [
-                                             table_master[i][table_master[0].index("SHRP_ID")],
-                                             table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
-                                         x[p_iri[0].index("IRI")] != "", p_iri)),
+            nearest = sorted(lc_iri(p_iri,
+                                    table_master[i][table_master[0].index("STATE_CODE")],
+                                    table_master[i][table_master[0].index("SHRP_ID")],
+                                    table_master[i][table_master[0].index("CONSTRUCTION_NO")]),
                              key=lambda x: abs(date_diff(x[p_iri[0].index("VISIT_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -191,6 +198,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 table_master[i].extend([""] * 2)
             sys.stdout.write("\r- IRI %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
         print("")
+    else:
+        table_master[0].append("IRI_YEAR_DIF")
+        for i in range(1, table_number):
+            table_master[i].append("")
 
     # == DEF ==
 
@@ -202,14 +213,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         for i in range(1, table_number):
 
             # Lista ordenada de valores por diferencia de fechas
-            nearest = sorted(list(filter(lambda x:
-                                         [x[p_def[0].index("SHRP_ID")],
-                                          x[p_def[0].index("STATE_CODE")],
-                                          x[p_def[0].index("CONSTRUCTION_NO")]] == [
-                                             table_master[i][table_master[0].index("SHRP_ID")],
-                                             table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
-                                         x[4] != "", p_def)),
+            nearest = sorted(lc_def(p_def,
+                                    table_master[i][table_master[0].index("STATE_CODE")],
+                                    table_master[i][table_master[0].index("SHRP_ID")],
+                                    table_master[i][table_master[0].index("CONSTRUCTION_NO")]),
                              key=lambda x: abs(date_diff(x[p_def[0].index("TEST_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -223,6 +230,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                 table_master[i].extend([""] * 7)
             sys.stdout.write("\r- DEF %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
         print("")
+    else:
+        table_master[0].append("DEF_YEAR_DIF")
+        for i in range(1, table_number):
+            table_master[i].append("")
 
     # == SKN ==
 
@@ -233,14 +244,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         for i in range(1, table_number):
 
             # Lista ordenada de valores por diferencia de fechas
-            nearest = sorted(list(filter(lambda x:
-                                         [x[p_skn[0].index("SHRP_ID")],
-                                          x[p_skn[0].index("STATE_CODE")],
-                                          x[p_skn[0].index("CONSTRUCTION_NO")]] == [
-                                             table_master[i][table_master[0].index("SHRP_ID")],
-                                             table_master[i][table_master[0].index("STATE_CODE")],
-                                             table_master[i][table_master[0].index("CONSTRUCTION_NO")]] and
-                                         x[p_skn[0].index("FRICTION_NO_END")] != "", p_skn)),
+            nearest = sorted(lc_skn(p_skn,
+                                    table_master[i][table_master[0].index("STATE_CODE")],
+                                    table_master[i][table_master[0].index("SHRP_ID")],
+                                    table_master[i][table_master[0].index("CONSTRUCTION_NO")]),
                              key=lambda x: abs(date_diff(x[p_skn[0].index("FRICTION_DATE")],
                                                          table_master[i][table_master[0].index(table_dating)])))
 
@@ -256,6 +263,9 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         print("")
     else:
         table_master[0][table_master[0].index("FRICTION_NO_END")] = "SKID_NUMBER"
+        table_master[0].append("SKN_YEAR_DIF")
+        for i in range(1, table_number):
+            table_master[i].append("")
 
     # == CND ==
 
@@ -265,13 +275,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     for i in range(1, table_number):
 
         # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[p_cnd[0].index("SHRP_ID")],
-                               x[p_cnd[0].index("STATE_CODE")],
-                               x[p_cnd[0].index("CONSTRUCTION_NO")]] == [
-                                  table_master[i][table_master[0].index("SHRP_ID")],
-                                  table_master[i][table_master[0].index("STATE_CODE")],
-                                  table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_cnd))
+        nearest = lc_cnd(p_cnd,
+                         table_master[i][table_master[0].index("STATE_CODE")],
+                         table_master[i][table_master[0].index("SHRP_ID")],
+                         table_master[i][table_master[0].index("CONSTRUCTION_NO")])
 
         # Añade la diferencia de fechas del primer valor de la lista
         if len(nearest) > 0:
@@ -292,13 +299,9 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     for i in range(1, table_number):
 
         # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[p_trf[0].index("SHRP_ID")],
-                               x[p_trf[0].index("STATE_CODE")],
-                               int(str(x[p_trf[0].index("YEAR_MON_EST")])[0:4])] == [
-                                  table_master[i][table_master[0].index("SHRP_ID")],
-                                  table_master[i][table_master[0].index("STATE_CODE")],
-                                  int_year(table_master[i][table_master[0].index(table_dating)])], p_trf[1:]))
+        nearest = lc_trf(p_trf, table_master[i][table_master[0].index("STATE_CODE")],
+                         table_master[i][table_master[0].index("SHRP_ID")],
+                         int_year(table_master[i][table_master[0].index(table_dating)]))
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
@@ -318,13 +321,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     for i in range(1, table_number):
 
         # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[p_snu[0].index("SHRP_ID")],
-                               x[p_snu[0].index("STATE_CODE")],
-                               x[p_snu[0].index("CONSTRUCTION_NO")]] == [
-                                  table_master[i][table_master[0].index("SHRP_ID")],
-                                  table_master[i][table_master[0].index("STATE_CODE")],
-                                  table_master[i][table_master[0].index("CONSTRUCTION_NO")]], p_snu))
+        nearest = lc_snu(p_snu,
+                         table_master[i][table_master[0].index("STATE_CODE")],
+                         table_master[i][table_master[0].index("SHRP_ID")],
+                         table_master[i][table_master[0].index("CONSTRUCTION_NO")])
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
@@ -344,16 +344,10 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     for i in range(1, table_number):
 
         # Lista de valores
-        nearest = list(filter(lambda x:
-                              [x[p_vws[0].index("SHRP_ID")],
-                               x[p_vws[0].index("STATE_CODE")],
-                               int(x[p_vws[0].index("YEAR")]),
-                               int(x[p_vws[0].index("MONTH")])] == [
-                                  table_master[i][table_master[0].index("SHRP_ID")],
-                                  table_master[i][table_master[0].index("STATE_CODE")],
-                                  int_year(table_master[i][table_master[0].index(table_dating)]),
-                                  int_month(table_master[i][table_master[0].index(table_dating)]),
-                              ], p_vws[1:]))
+        nearest = lc_vws(p_vws, table_master[i][table_master[0].index("STATE_CODE")],
+                         table_master[i][table_master[0].index("SHRP_ID")],
+                         int_year(table_master[i][table_master[0].index(table_dating)]),
+                         int_month(table_master[i][table_master[0].index(table_dating)]))
 
         # Añade el índice del primer valor de la lista
         if len(nearest) > 0:
@@ -365,19 +359,160 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         sys.stdout.write("\r- VWS %d/%d: añadidas %s entradas" % (i, table_number - 1, count))
     print("")
 
-    table_master = form_table(table_master, table_dating, p_table)
+    table_master = form_table(table_master, table_dating)
 
     save_csv("./res/master_" + p_table + ".csv", table_master)
 
 
-def form_table(table, table_dating, type):
+def lc_pci(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("PCI")] != "") and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_iri(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("IRI")] != "") and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_def(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("F1_DEF_AVG")] != "") and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_skn(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("FRICTION_NO_END")] != "") and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_cnd(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_trf(matrix, p_sc, p_id, p_y):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_y: YEAR external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (int(str(x[matrix[0].index("YEAR_MON_EST")])[0:4]) == p_y) and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc)]
+
+    return filtered_list
+
+
+def lc_snu(matrix, p_sc, p_id, p_cn):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_cn: CONSTRUCTION_NO external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc) and
+                     (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
+
+    return filtered_list
+
+
+def lc_vws(matrix, p_sc, p_id, p_y, p_m):
+    """
+    PCI list comprehension
+    :param matrix: input matrix
+    :param p_sc: STATE_CODE external comparator
+    :param p_id: SHRP_ID external comparator
+    :param p_m: YEAR external comparator
+    :param p_y: MONTH external comparator
+    :return: filtered_list (without headers)
+    """
+    filtered_list = [x for x in matrix[1:] if
+                     (int(x[matrix[0].index("YEAR")]) == p_y) and
+                     (int(x[matrix[0].index("MONTH")]) == p_m) and
+                     (x[matrix[0].index("SHRP_ID")] == p_id) and
+                     (x[matrix[0].index("STATE_CODE")] == p_sc)]
+
+    return filtered_list
+
+
+def form_table(table, table_dating):
     for i in range(1, len(table)):
-        columns_gen = [
+        table[i] = [
             # General columns
             table[i][table[0].index("STATE_CODE")], table[i][table[0].index("SHRP_ID")],
             table[i][table[0].index(table_dating)], table[i][table[0].index("CONSTRUCTION_NO")],
-        ]
-        columns_pci = [
+
             # Pavement distress + PCI
             table[i][table[0].index("GATOR_CRACK_A_L")], table[i][table[0].index("GATOR_CRACK_A_M")],
             table[i][table[0].index("GATOR_CRACK_A_H")], table[i][table[0].index("BLK_CRACK_A_L")],
@@ -406,33 +541,26 @@ def form_table(table, table_dating, type):
             table[i][table[0].index("RAVELING")], table[i][table[0].index("PUMPING_NO")],
             table[i][table[0].index("PUMPING_L")], table[i][table[0].index("OTHER")],
             table[i][table[0].index("SURVEY_WIDTH")], table[i][table[0].index("WP_LENGTH_CRACKED")],
-            table[i][table[0].index("TRANS_CRACK_L_GT183")], table[i][table[0].index("PCI")]
-        ]
+            table[i][table[0].index("TRANS_CRACK_L_GT183")], table[i][table[0].index("PCI")],
+            table[i][table[0].index("PCI_YEAR_DIF")],
 
-        columns_iri = [
             # IRI
-            table[i][table[0].index("IRI")],
-        ]
+            table[i][table[0].index("IRI")], table[i][table[0].index("IRI_YEAR_DIF")],
 
-        columns_def = [
             # DEFLECTIONS
             table[i][table[0].index("F1_DEF_AVG")], table[i][table[0].index("F1_DEF_MAX")],
             table[i][table[0].index("F1_DEF_CHR")], table[i][table[0].index("F3_DEF_AVG")],
-            table[i][table[0].index("F3_DEF_MAX")], table[i][table[0].index("F3_DEF_CHR")]
-        ]
+            table[i][table[0].index("F3_DEF_MAX")], table[i][table[0].index("F3_DEF_CHR")],
+            table[i][table[0].index("DEF_YEAR_DIF")],
 
-        columns_skn = [
             # SKID NUMBER
-            table[i][table[0].index("SKID_NUMBER")]
-        ]
+            table[i][table[0].index("SKID_NUMBER")], table[i][table[0].index("DEF_YEAR_DIF")],
 
-        columns_oth = [
             # Pavement age
             table[i][table[0].index("Pa")],
 
             # Traffic
-            table[i][table[0].index("AADT")], table[i][table[0].index("AADTT")],
-            table[i][table[0].index("KESAL")],
+            table[i][table[0].index("AADT")], table[i][table[0].index("AADTT")], table[i][table[0].index("KESAL")],
 
             # Structural Number
             table[i][table[0].index("SN")],
@@ -450,116 +578,50 @@ def form_table(table, table_dating, type):
             table[i][table[0].index("MON_SNOW_CUM")]
         ]
 
-        if type == "pci":
-            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
-            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
-            column_diff_skn = [table[i][table[0].index("DEF_YEAR_DIF")]]
-            table[i] = columns_gen + \
-                       columns_pci + \
-                       columns_iri + column_diff_iri + \
-                       columns_def + column_diff_def + \
-                       columns_skn + column_diff_skn + \
-                       columns_oth
-        elif type == "iri":
-            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
-            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
-            column_diff_skn = [table[i][table[0].index("DEF_YEAR_DIF")]]
-            table[i] = columns_gen + \
-                       columns_pci + column_diff_pci + \
-                       columns_iri + \
-                       columns_def + column_diff_def + \
-                       columns_skn + column_diff_skn + \
-                       columns_oth
-        elif type == "def":
-            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
-            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
-            column_diff_skn = [table[i][table[0].index("SKN_YEAR_DIF")]]
-            table[i] = columns_gen + \
-                       columns_pci + column_diff_pci + \
-                       columns_iri + column_diff_iri + \
-                       columns_def + \
-                       columns_skn + column_diff_skn + \
-                       columns_oth
-        else:
-            column_diff_pci = [table[i][table[0].index("PCI_YEAR_DIF")]]
-            column_diff_iri = [table[i][table[0].index("IRI_YEAR_DIF")]]
-            column_diff_def = [table[i][table[0].index("DEF_YEAR_DIF")]]
-            table[i] = columns_gen + \
-                       columns_pci + column_diff_pci + \
-                       columns_iri + column_diff_iri + \
-                       columns_def + column_diff_def + \
-                       columns_skn + \
-                       columns_oth
-
         sys.stdout.write("\r- VWS %d/%d: formando tabla" % (i + 1, len(table)))
         print("")
 
-    headers_gen = ["STATE_CODE", "SHRP_ID", table_dating, "CONSTRUCTION_NO"]
+    table[0] = [
+        # General columns
+        "STATE_CODE", "SHRP_ID", table_dating, "CONSTRUCTION_NO",
 
-    headers_pci = ["GATOR_CRACK_A_L", "GATOR_CRACK_A_M", "GATOR_CRACK_A_H", "BLK_CRACK_A_L", "BLK_CRACK_A_M",
-                   "BLK_CRACK_A_H", "EDGE_CRACK_L_L", "EDGE_CRACK_L_M", "EDGE_CRACK_L_H", "LONG_CRACK_WP_L_L",
-                   "LONG_CRACK_WP_L_M", "LONG_CRACK_WP_L_H", "LONG_CRACK_WP_SEAL_L_L", "LONG_CRACK_WP_SEAL_L_M",
-                   "LONG_CRACK_WP_SEAL_L_H", "LONG_CRACK_NWP_L_L", "LONG_CRACK_NWP_L_M", "LONG_CRACK_NWP_L_H",
-                   "LONG_CRACK_NWP_SEAL_L_L", "LONG_CRACK_NWP_SEAL_L_M", "LONG_CRACK_NWP_SEAL_L_H", "TRANS_CRACK_NO_L",
-                   "TRANS_CRACK_NO_M", "TRANS_CRACK_NO_H", "TRANS_CRACK_L_L", "TRANS_CRACK_L_M", "TRANS_CRACK_L_H",
-                   "TRANS_CRACK_SEAL_L_L", "TRANS_CRACK_SEAL_L_M", "TRANS_CRACK_SEAL_L_H", "PATCH_NO_L", "PATCH_NO_M",
-                   "PATCH_NO_H", "PATCH_A_L", "PATCH_A_M", "PATCH_A_H", "POTHOLES_NO_L", "POTHOLES_NO_M",
-                   "POTHOLES_NO_H", "POTHOLES_A_L", "POTHOLES_A_M", "POTHOLES_A_H", "SHOVING_NO", "SHOVING_A",
-                   "BLEEDING", "POLISH_AGG_A", "RAVELING", "PUMPING_NO", "PUMPING_L", "OTHER", "SURVEY_WIDTH",
-                   "WP_LENGTH_CRACKED", "TRANS_CRACK_L_GT183", "PCI"]
+        # Pavement distress + PCI
+        "GATOR_CRACK_A_L", "GATOR_CRACK_A_M", "GATOR_CRACK_A_H", "BLK_CRACK_A_L", "BLK_CRACK_A_M",
+        "BLK_CRACK_A_H", "EDGE_CRACK_L_L", "EDGE_CRACK_L_M", "EDGE_CRACK_L_H", "LONG_CRACK_WP_L_L",
+        "LONG_CRACK_WP_L_M", "LONG_CRACK_WP_L_H", "LONG_CRACK_WP_SEAL_L_L", "LONG_CRACK_WP_SEAL_L_M",
+        "LONG_CRACK_WP_SEAL_L_H", "LONG_CRACK_NWP_L_L", "LONG_CRACK_NWP_L_M", "LONG_CRACK_NWP_L_H",
+        "LONG_CRACK_NWP_SEAL_L_L", "LONG_CRACK_NWP_SEAL_L_M", "LONG_CRACK_NWP_SEAL_L_H", "TRANS_CRACK_NO_L",
+        "TRANS_CRACK_NO_M", "TRANS_CRACK_NO_H", "TRANS_CRACK_L_L", "TRANS_CRACK_L_M", "TRANS_CRACK_L_H",
+        "TRANS_CRACK_SEAL_L_L", "TRANS_CRACK_SEAL_L_M", "TRANS_CRACK_SEAL_L_H", "PATCH_NO_L", "PATCH_NO_M",
+        "PATCH_NO_H", "PATCH_A_L", "PATCH_A_M", "PATCH_A_H", "POTHOLES_NO_L", "POTHOLES_NO_M",
+        "POTHOLES_NO_H", "POTHOLES_A_L", "POTHOLES_A_M", "POTHOLES_A_H", "SHOVING_NO", "SHOVING_A",
+        "BLEEDING", "POLISH_AGG_A", "RAVELING", "PUMPING_NO", "PUMPING_L", "OTHER", "SURVEY_WIDTH",
+        "WP_LENGTH_CRACKED", "TRANS_CRACK_L_GT183", "PCI", "PCI_YEAR_DIF",
 
-    headers_iri = ["IRI"]
+        # IRI
+        "IRI", "IRI_YEAR_DIF",
 
-    headers_def = ["F1_DEF_AVG", "F1_DEF_MAX", "F1_DEF_CHR", "F3_DEF_AVG", "F3_DEF_MAX", "F3_DEF_CHR"]
+        # DEFLECTIONS
+        "F1_DEF_AVG", "F1_DEF_MAX", "F1_DEF_CHR", "F3_DEF_AVG", "F3_DEF_MAX", "F3_DEF_CHR", "DEF_YEAR_DIF",
 
-    headers_skn = ["SKID_NUMBER"]
+        # SKID NUMBER
+        "SKID_NUMBER", "SKN_YEAR_DIF",
 
-    headers_oth = ["Pa", "AADT", "AADTT", "KESAL", "SN", "TOTAL_ANN_PRECIP", "TOTAL_MON_PRECIP", "TOTAL_SNOWFALL_YR",
-                   "TOTAL_SNOWFALL_MONTH", "MEAN_ANN_TEMP_AVG", "MEAN_MON_TEMP_AVG", "FREEZE_INDEX_YR",
-                   "FREEZE_INDEX_MONTH", "FREEZE_THAW_YR", "FREEZE_THAW_MONTH", "MEAN_ANN_WIND_AVG",
-                   "MEAN_MON_WIND_AVG", "MAX_ANN_HUM_AVG", "MAX_MON_HUM_AVG", "MIN_ANN_HUM_AVG", "MIN_MON_HUM_AVG",
-                   "CLIMATIC ZONE", "MON_PREC_CUM", "MON_SNOW_CUM"]
+        # Pavement age
+        "Pa",
 
-    if type == "pci":
-        header_diff_iri = ["IRI_YEAR_DIF"]
-        header_diff_def = ["DEF_YEAR_DIF"]
-        header_diff_skn = ["SKN_YEAR_DIF"]
-        table[0] = headers_gen + \
-                   headers_pci + \
-                   headers_iri + header_diff_iri + \
-                   headers_def + header_diff_def + \
-                   headers_skn + header_diff_skn + \
-                   headers_oth
-    elif type == "iri":
-        header_diff_pci = ["PCI_YEAR_DIF"]
-        header_diff_def = ["DEF_YEAR_DIF"]
-        header_diff_skn = ["SKN_YEAR_DIF"]
-        table[0] = headers_gen + \
-                   headers_pci + header_diff_pci + \
-                   headers_iri + \
-                   headers_def + header_diff_def + \
-                   headers_skn + header_diff_skn + \
-                   headers_oth
-    elif type == "def":
-        header_diff_pci = ["PCI_YEAR_DIF"]
-        header_diff_iri = ["IRI_YEAR_DIF"]
-        header_diff_skn = ["SKN_YEAR_DIF"]
-        table[0] = headers_gen + \
-                   headers_pci + header_diff_pci + \
-                   headers_iri + header_diff_iri + \
-                   headers_def + \
-                   headers_skn + header_diff_skn + \
-                   headers_oth
-    else:
-        header_diff_pci = ["PCI_YEAR_DIF"]
-        header_diff_iri = ["IRI_YEAR_DIF"]
-        header_diff_def = ["DEF_YEAR_DIF"]
-        table[0] = headers_gen + \
-                   headers_pci + header_diff_pci + \
-                   headers_iri + header_diff_iri + \
-                   headers_def + header_diff_def + \
-                   headers_skn + \
-                   headers_oth
+        # Traffic
+        "AADT", "AADTT", "KESAL",
+
+        # Structural Number
+        "SN",
+
+        # VWS
+        "TOTAL_ANN_PRECIP", "TOTAL_MON_PRECIP", "TOTAL_SNOWFALL_YR",
+        "TOTAL_SNOWFALL_MONTH", "MEAN_ANN_TEMP_AVG", "MEAN_MON_TEMP_AVG", "FREEZE_INDEX_YR",
+        "FREEZE_INDEX_MONTH", "FREEZE_THAW_YR", "FREEZE_THAW_MONTH", "MEAN_ANN_WIND_AVG",
+        "MEAN_MON_WIND_AVG", "MAX_ANN_HUM_AVG", "MAX_MON_HUM_AVG", "MIN_ANN_HUM_AVG", "MIN_MON_HUM_AVG",
+        "CLIMATIC ZONE", "MON_PREC_CUM", "MON_SNOW_CUM"]
 
     return table
 
@@ -613,9 +675,9 @@ if __name__ == '__main__':
     # =====================================================================
 
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci")
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn")
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri")
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def")
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn")
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
 
