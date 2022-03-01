@@ -1,15 +1,10 @@
 import math
-import os
-# import shutil
 import sys
 import time
 from copy import deepcopy
 from datetime import datetime
 
 import csv
-
-
-# import xls2csv
 
 
 def load_csv(p_path):
@@ -45,7 +40,7 @@ def row_to_str(p_row):
 def int_month(date):
     if str(date)[2:3] == "/":
         # Format: mm/dd/aaaa
-        return int(str(date)[0:2])
+        return int(str(date)[:2])
     else:
         # Format: yyyy-mm-dd
         return int(str(date)[5:7])
@@ -57,65 +52,32 @@ def int_year(date):
         return int(str(date)[6:10])
     else:
         # Format: yyyy-mm-dd
-        return int(str(date)[0:4])
+        return int(str(date)[:4])
 
 
 def date_diff(d1, d2):
     if str(d1)[2:3] == "/":
         # Format: mm/dd/aaaa - > YYYY, MM, DD
-        d1 = datetime(int(str(d1)[6:10]), int(str(d1)[0:2]), int(str(d1)[3:5]))
+        d1 = datetime(int(str(d1)[6:10]), int(str(d1)[:2]), int(str(d1)[3:5]))
     else:
         # Format: yyyy-mm-dd - > YYYY, MM, DD
-        d1 = datetime(int(str(d1)[0:4]), int(str(d1)[5:7]), int(str(d1)[8:10]))
+        d1 = datetime(int(str(d1)[:4]), int(str(d1)[5:7]), int(str(d1)[8:10]))
 
     if str(d2)[2:3] == "/":
         # Format: mm/dd/aaaa - > YYYY, MM, DD
-        d2 = datetime(int(str(d2)[6:10]), int(str(d2)[0:2]), int(str(d2)[3:5]))
+        d2 = datetime(int(str(d2)[6:10]), int(str(d2)[:2]), int(str(d2)[3:5]))
     else:
         # Format: yyyy-mm-dd - > YYYY, MM, DD
-        d2 = datetime(int(str(d2)[0:4]), int(str(d2)[5:7]), int(str(d2)[8:10]))
+        d2 = datetime(int(str(d2)[:4]), int(str(d2)[5:7]), int(str(d2)[8:10]))
 
     return (d1 - d2).days
-
-
-def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
-    if not os.path.isdir(p_path_res):
-        try:
-            print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % p_path_res)
-            os.mkdir(p_path_res)
-        except OSError:
-            print("\U000026D4 The output directory \"%s\" does not exist and could not be created. " % p_path_res)
-            exit(1)
-    else:
-        print("\U0001F6C8 Output directory: \"%s\"" % p_path_res)
-
-    print("\n\U0001F6C8 Finding \"" + p_code + "\" files under path \"" + p_path + "\"")
-    p_list = []
-    for root, dirs, files in os.walk(p_path):
-        for f in files:
-            p_list.append((os.path.join(root, f)).replace("\\", "/")) if f.startswith(p_code) else 0
-
-    if len(p_list) == 0:
-        print("(!) Code \"%s\" was not found under path \"%s\"" % (p_code, p_path))
-        return
-
-    p_result = None
-
-    for n in range(0, len(p_list)):
-        if p_result is None:
-            p_result = load_csv(p_list[n])
-        else:
-            [p_result.append(p_row) for p_row in load_csv(p_list[n])[1:]]
-        sys.stdout.write("\r- %d/%d files joined" % (n + 1, len(p_list)))
-
-    save_csv(p_path_res + p_code + "_join.csv", p_result)
 
 
 def fix_pci_date(p_table):
     for i in range(1, len(p_table)):
         p_table[i][p_table[0].index("SURVEY_DATE")] = \
             p_table[i][p_table[0].index("SURVEY_DATE")][6:] + "-" + \
-            p_table[i][p_table[0].index("SURVEY_DATE")][0:2] + "-" + \
+            p_table[i][p_table[0].index("SURVEY_DATE")][:2] + "-" + \
             p_table[i][p_table[0].index("SURVEY_DATE")][3:5] + " 00:00:00"
     return p_table
 
@@ -131,23 +93,23 @@ def etr(p_total, p_index, p_time, p_for):
 
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table):
     # Only for testing purposes
-    # table_number = 20
+    table_number = None
 
     if p_table == "pci":
-        table_number = len(p_pci)
-        table_master = deepcopy(p_pci[0:table_number])
+        table_number = len(p_pci) if table_number is None else table_number
+        table_master = deepcopy(p_pci[:table_number])
         table_dating = "SURVEY_DATE"
     elif p_table == "iri":
-        table_number = len(p_iri)
-        table_master = deepcopy(p_iri[0:table_number])
+        table_number = len(p_iri) if table_number is None else table_number
+        table_master = deepcopy(p_iri[:table_number])
         table_dating = "VISIT_DATE"
     elif p_table == "def":
-        table_number = len(p_def)
-        table_master = deepcopy(p_def[0:table_number])
+        table_number = len(p_def) if table_number is None else table_number
+        table_master = deepcopy(p_def[:table_number])
         table_dating = "TEST_DATE"
     else:
-        table_number = len(p_skn)
-        table_master = deepcopy(p_skn[0:table_number])
+        table_number = len(p_skn) if table_number is None else table_number
+        table_master = deepcopy(p_skn[:table_number])
         table_dating = "FRICTION_DATE"
 
     print("(i) Generating %s master table..." % p_table.upper())
@@ -155,7 +117,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     # == PCI ==
 
     if p_table != "pci":
-        table_master[0].extend(p_pci[0][5:len(p_pci[0])])
+        table_master[0].extend(p_pci[0][5:])
         table_master[0].append("PCI_YEAR_DIF")
         count = 0
 
@@ -173,7 +135,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
             # Add index and date difference from head od list
             if len(nearest) > 0:
-                table_master[i].extend(nearest[0][5:len(nearest[0])])
+                table_master[i].extend(nearest[0][5:])
                 table_master[i].append(date_diff(nearest[0][p_pci[0].index("SURVEY_DATE")],
                                                  table_master[i][table_master[0].index(table_dating)]) / 365)
                 count += 1
@@ -228,7 +190,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     # == DEF ==
 
     if p_table != "def":
-        table_master[0].extend(p_def[0][4:len(p_def[0])])
+        table_master[0].extend(p_def[0][4:])
         table_master[0].append("DEF_YEAR_DIF")
         count = 0
 
@@ -246,7 +208,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
             # Add index and date difference from head od list
             if len(nearest) > 0:
-                table_master[i].extend(nearest[0][4:len(nearest[0])])
+                table_master[i].extend(nearest[0][4:])
                 table_master[i].append(date_diff(nearest[0][p_def[0].index("TEST_DATE")],
                                                  table_master[i][table_master[0].index(table_dating)]) / 365)
                 count += 1
@@ -265,7 +227,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     # == SKN ==
 
     if p_table != "skn":
-        table_master[0].extend(["SKID_NUMBER", "SKN_YEAR_DIF"])
+        table_master[0].extend(["FRICTION_NO_END", "SKN_YEAR_DIF"])
         count = 0
 
         for_time = 0
@@ -510,7 +472,7 @@ def lc_trf(matrix, p_sc, p_id, p_y):
     :return: filtered_list (without headers)
     """
     filtered_list = [x for x in matrix[1:] if
-                     (int(str(x[matrix[0].index("YEAR_MON_EST")])[0:4]) == p_y) and
+                     (int(str(x[matrix[0].index("YEAR_MON_EST")])[:4]) == p_y) and
                      (x[matrix[0].index("SHRP_ID")] == p_id) and
                      (x[matrix[0].index("STATE_CODE")] == p_sc)]
 
@@ -675,34 +637,7 @@ def form_table(table, table_dating):
 
 if __name__ == '__main__':
     start_time = time.time()
-    #
-    # xls_list = []
-    #
-    # for file in os.listdir("./xls"):
-    #     if file.endswith(".xlsx"):
-    #         xls_list.append(os.path.join("./xls", file).replace("\\", "/"))
-    #
-    # for k in range(0, len(xls_list)):
-    #     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    #     print("(%s/%s) Current file: \"%s\"" % (k + 1, len(xls_list), xls_list[k]))
-    #
-    #     csv_path = "./csv/" + os.path.basename(xls_list[k])[0:-5] + "/"
-    #
-    #     try:
-    #         xls2csv.main(xls_list[k], csv_path, True)
-    #     except BaseException as e:
-    #         print("(!) Error with file: ", e)
-    #         continue
 
-    # Join CSV files
-    # for code in ["cnd", "def", "iri", "skn", "snu", "trf", "vws"]:
-    #     csv_group(code)
-
-    #     save_path = "./res/" + os.path.basename(xls_list[k])[0:-5] + ".csv"
-    #     shutil.copyfile("./csv/pci.csv", save_path)
-    #
-    # for
-    #
     print("(i) Loading CSV files...")
 
     csv_path = "./csv/00_All_States/"
