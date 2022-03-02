@@ -5,7 +5,7 @@ from copy import deepcopy
 from datetime import datetime
 
 import csv
-import shared
+from shared import load_csv, save_csv
 
 
 def int_month(date):
