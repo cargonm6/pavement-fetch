@@ -1,10 +1,10 @@
 import os
 import sys
 
-from shared import load_csv, save_csv
+from src.modules.module_common import load_csv, save_csv
 
 
-def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
+def csv_group(p_code, p_path, p_path_res):
     if not os.path.isdir(p_path_res):
         try:
             print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % p_path_res)
@@ -34,12 +34,9 @@ def csv_group(p_code, p_path="./csv/", p_path_res="./csv/00_All_States/"):
             [p_result.append(p_row) for p_row in load_csv(p_list[n])[1:]]
         sys.stdout.write("\r- %d/%d files joined" % (n + 1, len(p_list)))
 
-    save_csv(p_path_res + p_code + "_join.csv", p_result)
+    save_csv(p_path_res + p_code + ".csv", p_result)
 
 
-if __name__ == '__main__':
-    # Join CSV files
+def main(project_root):
     for code in ["cnd", "def", "iri", "skn", "snu", "trf", "vws"]:
-        csv_group(code)
-
-        save_path = "./csv/00_All_States/" + code + ".csv"
+        csv_group(code, project_root + "/res/csv/raw/", project_root + "/res/csv/ready/")

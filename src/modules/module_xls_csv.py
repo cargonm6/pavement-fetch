@@ -11,7 +11,7 @@ from operator import itemgetter
 import pandas
 import pandas as pd
 
-from shared import save_csv
+from src.modules.module_common import save_csv
 
 global_csv_path = "./csv/"
 
@@ -722,62 +722,15 @@ def str_time(p_time):
         round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
 
 
-def main(xls_file, csv_path, xls_path):
+def main(project_root):
     """
-    Main function
 
-    :param xls_file: input list with Excel files
-    :param csv_path: CSV destination path
-    :param xls_path: XLS destination path
     :return:
     """
-    global global_csv_path
-    global_csv_path = csv_path
 
-    if not os.path.isfile(xls_file):
-        print("\U000026D4 The input file \"%s\" does not exist. " % xls_file)
-        exit(1)
-
-    if not os.path.isdir(csv_path):
-        try:
-            print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % csv_path)
-            os.mkdir(csv_path)
-        except OSError:
-            print("\U000026D4 The output directory \"%s\" does not exist and could not be created. " % csv_path)
-            exit(1)
-    else:
-        print("\U0001F6C8 Output directory: \"%s\"" % csv_path)
-
-    # CSV output file addresses
-    csv_tables = [csv_path + s for s in ["iri.csv", "def.csv", "skn.csv", "snu.csv", "cnd.csv", "vws.csv", "trf.csv"]]
-
-    total_time = 0
-
-    for n in range(0, len(csv_tables)):
-        start_time = time.time()
-
-        extract_iri(csv_tables[n], xls_file) if n == 0 else 0
-        # extract_def(csv_tables[n], xls_file) if n == 1 else 0
-        # extract_skn(csv_tables[n], xls_file) if n == 2 else 0
-        # extract_snu(csv_tables[n], xls_file) if n == 3 else 0
-        # extract_cnd(csv_tables[n], xls_file) if n == 4 else 0
-        # extract_vws(csv_tables[n], xls_file) if n == 5 else 0
-        # extract_trf(csv_tables[n], xls_file) if n == 6 else 0
-
-        partial_time = time.time() - start_time
-        total_time += partial_time
-        print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
-            csv_tables[n], xls_file, str_time(partial_time)))
-
-    # Move processed Excel to another folder
-    shutil.move(xls_file, xls_path + os.path.basename(xls_file))
-
-    print("\U0001F6C8 Process finished in %s" % str_time(total_time))
-
-
-if __name__ == '__main__':
-    p_xls_ready = "./xls/ready/"
-    p_xls_done = "./xls/done/"
+    p_xls_ready = project_root + "/res/xls/ready/"
+    p_xls_done = project_root + "/res/xls/done/"
+    p_csv_raw = project_root + "/res/csv/raw/"
     p_xls_list = []
 
     for file in os.listdir(p_xls_ready):
@@ -791,5 +744,49 @@ if __name__ == '__main__':
         print(string)
         print("·" * len(string))
 
-        p_csv_path = "./csv/" + os.path.basename(p_xls_list[k])[0:-5] + "/"
-        main(p_xls_list[k], p_csv_path, p_xls_done)
+        p_csv_path = p_csv_raw + os.path.basename(p_xls_list[k])[0:-5] + "/"
+        # main(p_csv_path)
+
+        global global_csv_path
+        global_csv_path = p_csv_path
+
+        if not os.path.isfile(p_xls_list[k]):
+            print("\U000026D4 The input file \"%s\" does not exist. " % p_xls_list[k])
+            exit(1)
+
+        if not os.path.isdir(p_csv_raw):
+            try:
+                print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % p_csv_raw)
+                os.mkdir(p_csv_raw)
+            except OSError:
+                print("\U000026D4 The output directory \"%s\" does not exist and could not be created. " % p_csv_raw)
+                exit(1)
+        else:
+            print("\U0001F6C8 Output directory: \"%s\"" % p_csv_raw)
+
+        # CSV output file addresses
+        csv_tables = [p_csv_raw + s for s in
+                      ["iri.csv", "def.csv", "skn.csv", "snu.csv", "cnd.csv", "vws.csv", "trf.csv"]]
+
+        total_time = 0
+
+        for n in range(0, len(csv_tables)):
+            start_time = time.time()
+
+            extract_iri(csv_tables[n], p_xls_list[k]) if n == 0 else 0
+            extract_def(csv_tables[n], p_xls_list[k]) if n == 1 else 0
+            extract_skn(csv_tables[n], p_xls_list[k]) if n == 2 else 0
+            extract_snu(csv_tables[n], p_xls_list[k]) if n == 3 else 0
+            extract_cnd(csv_tables[n], p_xls_list[k]) if n == 4 else 0
+            extract_vws(csv_tables[n], p_xls_list[k]) if n == 5 else 0
+            extract_trf(csv_tables[n], p_xls_list[k]) if n == 6 else 0
+
+            partial_time = time.time() - start_time
+            total_time += partial_time
+            print("\U00002BA1 File \"%s\" generated from \"%s\" (%s)\n" % (
+                csv_tables[n], p_xls_list[k], str_time(partial_time)))
+
+        # Move processed Excel to another folder
+        shutil.move(p_xls_list[k], p_xls_done + os.path.basename(p_xls_list[k]))
+
+        print("\U0001F6C8 Process finished in %s" % str_time(total_time))
