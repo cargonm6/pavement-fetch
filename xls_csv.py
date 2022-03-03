@@ -11,8 +11,7 @@ from operator import itemgetter
 import pandas
 import pandas as pd
 
-import csv
-import shared
+from shared import save_csv
 
 global_csv_path = "./csv/"
 
@@ -47,17 +46,26 @@ def extract_iri(p_path, p_file, p_sheet="MON_HSS_PROFILE_SECTION"):
     # Read Excel file and save as DataFrame
     df = pandas.read_excel(io=p_file, sheet_name=p_sheet)
 
-    df = df[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI"]]
+    df = df[["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE", "MRI", "SLOPE_VARIANCE"]]
 
-    df = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE"])["MRI"].agg(
+    df_iri = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE"])["MRI"].agg(
         [("IRI", lambda x: x.unique().mean()),
-         ("RUNS", lambda x: x.nunique()),
-         ("SD", lambda x: x.unique().std())]).reset_index()
+         ("IRI_RUNS", lambda x: x.nunique()),
+         ("IRI_SD", lambda x: x.unique().std())]).reset_index()
 
-    iri_list = [[column for column in df.columns]]
+    df_slv = df.groupby(["STATE_CODE", "SHRP_ID", "CONSTRUCTION_NO", "VISIT_DATE"])["SLOPE_VARIANCE"].agg(
+        [("SLV", lambda x: x.unique().mean()),
+         ("SLV_RUNS", lambda x: x.nunique()),
+         ("SLV_SD", lambda x: x.unique().std())]).reset_index()
+
+    df_iri = df_iri.join(df_slv["SLV"])
+    df_iri = df_iri.join(df_slv["SLV_RUNS"])
+    df_iri = df_iri.join(df_slv["SLV_SD"])
+
+    iri_list = [[column for column in df_iri.columns]]
 
     # Append values
-    for values in df.values:
+    for values in df_iri.values:
         iri_list.append([value for value in values])
 
     save_csv(p_path, iri_list)
@@ -749,12 +757,12 @@ def main(xls_file, csv_path, xls_path):
         start_time = time.time()
 
         extract_iri(csv_tables[n], xls_file) if n == 0 else 0
-        extract_def(csv_tables[n], xls_file) if n == 1 else 0
-        extract_skn(csv_tables[n], xls_file) if n == 2 else 0
-        extract_snu(csv_tables[n], xls_file) if n == 3 else 0
-        extract_cnd(csv_tables[n], xls_file) if n == 4 else 0
-        extract_vws(csv_tables[n], xls_file) if n == 5 else 0
-        extract_trf(csv_tables[n], xls_file) if n == 6 else 0
+        # extract_def(csv_tables[n], xls_file) if n == 1 else 0
+        # extract_skn(csv_tables[n], xls_file) if n == 2 else 0
+        # extract_snu(csv_tables[n], xls_file) if n == 3 else 0
+        # extract_cnd(csv_tables[n], xls_file) if n == 4 else 0
+        # extract_vws(csv_tables[n], xls_file) if n == 5 else 0
+        # extract_trf(csv_tables[n], xls_file) if n == 6 else 0
 
         partial_time = time.time() - start_time
         total_time += partial_time
