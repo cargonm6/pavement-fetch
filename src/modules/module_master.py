@@ -155,7 +155,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
                                                  table_master[i][table_master[0].index(table_dating)]) / 365)
                 count += 1
             else:
-                table_master[i].extend([""] * 2)
+                table_master[i].extend([""] * 3)
 
             time_est, time_for = etr(table_number, i, time_for, time_iter)
             if i < table_number - 1:
@@ -409,7 +409,7 @@ def lc_iri(matrix, p_sc, p_id, p_cn):
     """
     filtered_list = [x for x in matrix[1:] if
                      (x[matrix[0].index("IRI")] != "") and
-                     # (x[matrix[0].index("SLV")] != "") and
+                     (x[matrix[0].index("SLV")] != "") and
                      (x[matrix[0].index("SHRP_ID")] == p_id) and
                      (x[matrix[0].index("STATE_CODE")] == p_sc) and
                      (x[matrix[0].index("CONSTRUCTION_NO")] == p_cn)]
@@ -665,9 +665,9 @@ def main(project_root):
 
     # =====================================================================
 
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci", csv_path_out)
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri", csv_path_out)
-    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def", csv_path_out)
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci", csv_path_out)
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri", csv_path_out)
+    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def", csv_path_out)
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn", csv_path_out)
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
