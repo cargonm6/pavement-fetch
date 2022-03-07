@@ -648,8 +648,8 @@ def main(project_root):
 
     print("(i) Loading CSV files...")
 
-    csv_path_in = "./res/csv/ready/"
-    csv_path_out = "./res/csv/done/"
+    csv_path_in = project_root + "/res/csv/ready/"
+    csv_path_out = project_root + "/res/csv/done/"
 
     csv_pci = fix_pci_date(load_csv(csv_path_in + "pci.csv"))  # (PCI) Pavement Condition Index
     csv_iri = load_csv(csv_path_in + "iri.csv")  # (IRI) International Roughness Index
