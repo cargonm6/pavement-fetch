@@ -285,7 +285,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
     # == TRF ==
 
-    table_master[0].extend(p_trf[0][3:6])
+    table_master[0].extend(["AADT_AVG", "AADT_CUM", "AADTT_AVG", "AADTT_CUM", "KESAL_AVG", "KESAL_CUM"])
     count = 0
 
     time_for = 0
@@ -299,10 +299,14 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
         # Add index from head od list
         if len(nearest) > 0:
-            table_master[i].extend(nearest[0][3:6])
+            table_master[i].extend([
+                nearest[0][p_trf[0].index("AADT_AVG")], nearest[0][p_trf[0].index("AADT_CUM")],
+                nearest[0][p_trf[0].index("AADTT_AVG")], nearest[0][p_trf[0].index("AADTT_CUM")],
+                nearest[0][p_trf[0].index("KESAL_AVG")], nearest[0][p_trf[0].index("KESAL_CUM")]
+            ])
             count += 1
         else:
-            table_master[i].extend([""] * 3)
+            table_master[i].extend([""] * 6)
 
         time_est, time_for = etr(table_number, i, time_for, time_iter)
         if i < table_number - 1:
@@ -577,7 +581,9 @@ def form_table(table, table_dating):
             table[i][table[0].index("Pa")],
 
             # Traffic
-            table[i][table[0].index("AADT")], table[i][table[0].index("AADTT")], table[i][table[0].index("KESAL")],
+            table[i][table[0].index("AADT_AVG")], table[i][table[0].index("AADT_CUM")],
+            table[i][table[0].index("AADTT_AVG")], table[i][table[0].index("AADTT_CUM")],
+            table[i][table[0].index("KESAL_AVG")], table[i][table[0].index("KESAL_CUM")],
 
             # Structural Number
             table[i][table[0].index("SN")],
@@ -628,7 +634,7 @@ def form_table(table, table_dating):
         "Pa",
 
         # Traffic
-        "AADT", "AADTT", "KESAL",
+        "AADT_AVG", "AADT_CUM", "AADTT_AVG", "AADTT_CUM", "KESAL_AVG", "KESAL_CUM",
 
         # Structural Number
         "SN",
