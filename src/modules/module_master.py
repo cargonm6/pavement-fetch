@@ -1,13 +1,17 @@
-import math
 import sys
 import time
 from copy import deepcopy
 from datetime import datetime
 
-from src.modules.module_common import load_csv, save_csv
+from src.modules.module_common import load_csv, save_csv, to_hhmmss, etr
 
 
 def int_month(date):
+    """
+    Extract month from date
+    :param date: input month
+    :return: output month
+    """
     if str(date)[2:3] == "/":
         # Format: mm/dd/aaaa
         return int(str(date)[:2])
@@ -17,6 +21,11 @@ def int_month(date):
 
 
 def int_year(date):
+    """
+    Extract year from date
+    :param date: input date
+    :return: output year
+    """
     if str(date)[2:3] == "/":
         # Format: mm/dd/aaaa
         return int(str(date)[6:10])
@@ -26,6 +35,12 @@ def int_year(date):
 
 
 def date_diff(d1, d2):
+    """
+    Measure time difference between two dates
+    :param d1: date of reference
+    :param d2: second date
+    :return: time difference (in days)
+    """
     if str(d1)[2:3] == "/":
         # Format: mm/dd/aaaa - > YYYY, MM, DD
         d1 = datetime(int(str(d1)[6:10]), int(str(d1)[:2]), int(str(d1)[3:5]))
@@ -44,6 +59,11 @@ def date_diff(d1, d2):
 
 
 def fix_pci_date(p_table):
+    """
+    Check and test if PCI date has a proper format
+    :param p_table:
+    :return:
+    """
     for i in range(1, len(p_table)):
         p_table[i][p_table[0].index("SURVEY_DATE")] = \
             p_table[i][p_table[0].index("SURVEY_DATE")][6:] + "-" + \
@@ -52,20 +72,24 @@ def fix_pci_date(p_table):
     return p_table
 
 
-def to_hhmmss(p_seconds):
-    hh = math.floor(p_seconds / 3600)
-    mm = math.floor(p_seconds / 60) - (hh * 60)
-    ss = math.floor(p_seconds) - (hh * 3600) - (mm * 60)
-    return str(int(hh)).zfill(2) + ":" + str(int(mm)).zfill(2) + ":" + str(int(ss)).zfill(2)
 
-
-def etr(p_count_total, p_count_current, p_time_total, p_time_current):
-    p_time_total += (time.time() - p_time_current)
-    p_seconds = (-1 + p_count_total - p_count_current) * p_time_total / p_count_current
-    return to_hhmmss(p_seconds), p_time_total
 
 
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table, p_path):
+    """
+    Master table generator function
+    :param p_pci: PCI table
+    :param p_iri: IRI table
+    :param p_def: DEF table
+    :param p_skn: SKN table
+    :param p_cnd: CND table
+    :param p_trf: TRF table
+    :param p_snu: SNU table
+    :param p_vws: VWS table
+    :param p_table: table of interest
+    :param p_path: destination path
+    :return:
+    """
     # Only for testing purposes
     table_number = None
 
@@ -528,6 +552,12 @@ def lc_vws(matrix, p_sc, p_id, p_y, p_m):
 
 
 def form_table(table, table_dating):
+    """
+
+    :param table: input master table
+    :param table_dating: name of table date column
+    :return: formatted master table
+    """
     for i in range(1, len(table)):
         table[i] = [
             # General columns
@@ -650,6 +680,11 @@ def form_table(table, table_dating):
 
 
 def main(project_root):
+    """
+    Main function
+    :param project_root: project root path
+    :return:
+    """
     start_time = time.time()
 
     print("(i) Loading CSV files...")

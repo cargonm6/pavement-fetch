@@ -5,6 +5,13 @@ from src.modules.module_common import load_csv, save_csv
 
 
 def csv_group(p_code, p_path, p_path_res):
+    """
+
+    :param p_code:
+    :param p_path:
+    :param p_path_res:
+    :return:
+    """
     if not os.path.isdir(p_path_res):
         try:
             print("\U000026A0 The output directory \"%s\" does not exist and will be created. " % p_path_res)
@@ -38,5 +45,10 @@ def csv_group(p_code, p_path, p_path_res):
 
 
 def main(project_root):
+    """
+    Main function
+    :param project_root: project root path
+    :return:
+    """
     for code in ["cnd", "def", "iri", "skn", "snu", "trf", "vws"]:
         csv_group(code, project_root + "/res/csv/raw/", project_root + "/res/csv/ready/")

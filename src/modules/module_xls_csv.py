@@ -15,17 +15,6 @@ from src.modules.module_common import save_csv
 
 global_csv_path = "./csv/"
 
-# TODO
-"""
-extract_iri OK
-extract_def IN PROCESS (MIXED)
-extract_skn
-extract_vws
-extract_snu
-extract_cnd DELETED (SEE TRF)
-extract_trf  IN PROCESS (MIXED)
-"""
-
 
 def extract_iri(p_path, p_file, p_sheet="MON_HSS_PROFILE_SECTION"):
     """
@@ -596,6 +585,12 @@ def extract_skn(save_path, skn_filename, skn_sheet="MON_FRICTION"):
 
 
 def extract_vws(save_path, vws_filename):
+    """
+    Extract VWS data
+    :param save_path: destination path
+    :param vws_filename: origin file
+    :return:
+    """
     # For each STATE_CODE + SHRP_ID + YEAR + MONTH:
     # - Obtain the MONTH averages of: precipitation, snowfall, temperature, freeze, wind and humidity
     # For each STATE_CODE + SHRP_ID + YEAR:
@@ -707,6 +702,11 @@ def extract_vws(save_path, vws_filename):
 
 
 def question_yn(p_question):
+    """
+    Ask to user
+    :param p_question: text
+    :return: answer
+    """
     while True:
         value = input(p_question + " [S/n] > ")
         if value in ["s", "S"]:
@@ -718,13 +718,19 @@ def question_yn(p_question):
 
 
 def str_time(p_time):
+    """
+    Convert time to string
+    :param p_time: input time
+    :return: output string
+    """
     return time.strftime('%Hh %Mm %Ss ', time.gmtime(p_time)) + str(
         round(p_time * 1000) - 1000 * math.floor(p_time)) + "ms"
 
 
 def main(project_root):
     """
-
+    Main function
+    :param project_root: project root path
     :return:
     """
 
