@@ -72,9 +72,6 @@ def fix_pci_date(p_table):
     return p_table
 
 
-
-
-
 def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table, p_path):
     """
     Master table generator function
@@ -92,6 +89,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
     """
     # Only for testing purposes
     table_number = None
+    # table_number = 100
 
     if p_table == "pci":
         table_number = len(p_pci) if table_number is None else table_number
@@ -152,6 +150,9 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
         table_master[0].append("PCI_YEAR_DIF")
         for i in range(1, table_number):
             table_master[i].append("")
+
+            # SHRP_ID length problem
+            table_master[i][table_master[0].index("SHRP_ID")] = table_master[i][table_master[0].index("SHRP_ID")].zfill(4)
 
     # == IRI ==
 
@@ -692,7 +693,7 @@ def main(project_root):
     csv_path_in = project_root + "/res/csv/ready/"
     csv_path_out = project_root + "/res/csv/done/"
 
-    csv_pci = fix_pci_date(load_csv(csv_path_in + "pci.csv"))  # (PCI) Pavement Condition Index
+    csv_pci = fix_pci_date(load_csv(csv_path_in + "pci_interpolate.csv"))  # (PCI) Pavement Condition Index
     csv_iri = load_csv(csv_path_in + "iri.csv")  # (IRI) International Roughness Index
     csv_def = load_csv(csv_path_in + "def.csv")  # (DEF) Deflections
     csv_skn = load_csv(csv_path_in + "skn.csv")  # (SKN) Skid Number
@@ -707,8 +708,8 @@ def main(project_root):
     # =====================================================================
 
     master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "pci", csv_path_out)
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri", csv_path_out)
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def", csv_path_out)
-    master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn", csv_path_out)
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "iri", csv_path_out)
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "def", csv_path_out)
+    # master_table(csv_pci, csv_iri, csv_def, csv_skn, csv_cnd, csv_trf, csv_snu, csv_vws, "skn", csv_path_out)
 
     print(" ✓  Program finished in", '%.3f' % (time.time() - start_time), "seconds")
