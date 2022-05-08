@@ -12,22 +12,41 @@ from src.modules.module_common import row_to_str, save_csv, etr, to_hhmmss
 project_root = ""
 
 
+def transform_date(p_date, in_format="yyyy-mm-dd", out_format="mm/dd/yyyy"):
+    p_day, p_mon, p_yea = ["", "", ""]
+    if in_format == "yyyy-mm-dd":
+        p_day = str(p_date)[8:10]
+        p_mon = str(p_date)[5:7]
+        p_yea = str(p_date)[0:4]
+
+    if out_format == "mm/dd/yyyy":
+        p_date = p_mon + "/" + p_day + "/" + p_yea
+
+    return p_date
+
+
 def to_float(p_str):
-    p_str = str(p_str)
-    p_str = p_str.replace(",", ".")  # Replace dots with commas
-    p_str = float(p_str)
+    p_str = float(str(p_str).replace(",", "."))  # Replace dots with commas
     return p_str
 
 
-def main(p_root):
+def main(p_root, time_factor=30):
+    """
+
+    :param p_root: project root path
+    :param time_factor: time period (by default, 30 days)
+    :return:
+    """
     global project_root
     project_root = p_root
+    path_input = "/res/LTPP.csv"
+    path_output = "/res/csv/ready/pci.csv"
 
-    if not os.path.exists(project_root + "/res/LTPP.csv"):
+    if not os.path.exists(project_root + path_input):
         print("File does not exist")
         return
 
-    df = pd.read_csv(project_root + "/res/LTPP.csv", sep=";", encoding="unicode_escape")
+    df = pd.read_csv(project_root + path_input, sep=";", encoding="unicode_escape")
     df["SURVEY_DATE"] = pd.to_datetime(df["SURVEY_DATE"])
     df.sort_values(by=["STATE_CODE", "SHRP_ID", "SURVEY_DATE"], inplace=True)
 
@@ -39,7 +58,9 @@ def main(p_root):
 
     time_for = 0
 
-    for i in range(1, len(df_list)):
+    limit = len(df_list)  # 2
+
+    for i in range(1, limit):
         time_iter = time.time()
 
         # Add current row
@@ -54,14 +75,13 @@ def main(p_root):
             duration = (df_list[i + 1][df_list[0].index("SURVEY_DATE")] - df_list[i][
                 df_list[0].index("SURVEY_DATE")]).days
 
-            time_factor = 30  # month
-
             for step in range(1, int(numpy.floor(duration / time_factor))):
                 new_row = deepcopy(df_list[i])
 
                 # Time increment
                 old_date = new_row[df_list[0].index("SURVEY_DATE")]
                 new_date = old_date + datetime.timedelta(days=step * time_factor)
+
                 new_row[df_list[0].index("SURVEY_DATE")] = new_date
 
                 # Linear interpolation
@@ -92,8 +112,8 @@ def main(p_root):
                 "\r (%d/%d) Total time: %s" % (i, len(df_list) - 1, to_hhmmss(time_for)))
 
     for i in range(1, len(new_list)):
+        new_list[i][df_list[0].index("SURVEY_DATE")] = transform_date(new_list[i][df_list[0].index("SURVEY_DATE")],
+                                                                      "yyyy-mm-dd", "mm/dd/yyyy")
         new_list[i] = row_to_str(new_list[i])
 
-    save_csv(p_path=project_root + "/res/LTPP_interpolated.csv", p_data=new_list)
-
-    exit(0)
+    save_csv(p_path=project_root + path_output, p_data=new_list)

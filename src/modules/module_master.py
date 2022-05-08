@@ -60,10 +60,11 @@ def date_diff(d1, d2):
 
 def fix_pci_date(p_table):
     """
-    Check and test if PCI date has a proper format
+    Transform PCI format from "mm/dd/yyyy" (LTPP ft) to "yyyy-mm-dd 00:00:00" (LTPP SI)
     :param p_table:
     :return:
     """
+
     for i in range(1, len(p_table)):
         p_table[i][p_table[0].index("SURVEY_DATE")] = \
             p_table[i][p_table[0].index("SURVEY_DATE")][6:] + "-" + \
@@ -152,7 +153,8 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
             table_master[i].append("")
 
             # SHRP_ID length problem
-            table_master[i][table_master[0].index("SHRP_ID")] = table_master[i][table_master[0].index("SHRP_ID")].zfill(4)
+            table_master[i][table_master[0].index("SHRP_ID")] = table_master[i][table_master[0].index("SHRP_ID")].zfill(
+                4)
 
     # == IRI ==
 
@@ -406,7 +408,7 @@ def master_table(p_pci, p_iri, p_def, p_skn, p_cnd, p_trf, p_snu, p_vws, p_table
 
     table_master = form_table(table_master, table_dating)
 
-    save_csv(p_path + "master_" + p_table + ".csv", table_master)
+    save_csv(p_path + datetime.now().strftime("(%Y-%m-%d_%H-%M-%S) ") + "master_" + p_table + ".csv", table_master)
 
 
 def lc_pci(matrix, p_sc, p_id, p_cn):
@@ -688,12 +690,12 @@ def main(project_root):
     """
     start_time = time.time()
 
-    print("(i) Loading CSV files...")
+    print(" (i) Loading CSV files...")
 
     csv_path_in = project_root + "/res/csv/ready/"
     csv_path_out = project_root + "/res/csv/done/"
 
-    csv_pci = fix_pci_date(load_csv(csv_path_in + "pci_interpolate.csv"))  # (PCI) Pavement Condition Index
+    csv_pci = fix_pci_date(load_csv(csv_path_in + "pci.csv"))  # (PCI) Pavement Condition Index
     csv_iri = load_csv(csv_path_in + "iri.csv")  # (IRI) International Roughness Index
     csv_def = load_csv(csv_path_in + "def.csv")  # (DEF) Deflections
     csv_skn = load_csv(csv_path_in + "skn.csv")  # (SKN) Skid Number
