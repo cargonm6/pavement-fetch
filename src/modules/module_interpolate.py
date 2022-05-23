@@ -39,14 +39,18 @@ def main(p_root, time_factor=30):
     """
     global project_root
     project_root = p_root
-    path_input = "/res/LTPP.csv"
+
+    p_sheet = "MON_DIS_AC_REV"
+    path_input = "/res/LTPP.xlsx"
     path_output = "/res/csv/ready/pci.csv"
 
     if not os.path.exists(project_root + path_input):
         print("File does not exist")
         return
 
-    df = pd.read_csv(project_root + path_input, sep=";", encoding="unicode_escape")
+    df = pd.read_excel(io=project_root + path_input, sheet_name=p_sheet)
+
+    # df = pd.read_csv(project_root + path_input, sep=";", encoding="unicode_escape")
     df["SURVEY_DATE"] = pd.to_datetime(df["SURVEY_DATE"])
     df.sort_values(by=["STATE_CODE", "SHRP_ID", "SURVEY_DATE"], inplace=True)
 
@@ -54,6 +58,12 @@ def main(p_root, time_factor=30):
     for values in df.values:
         df_list.append([value for value in values])
 
+    # Without interpolation
+    if time_factor == 0:
+        save_csv(p_path=project_root + path_output, p_data=df_list)
+        return
+
+    # With interpolation
     new_list = [[column for column in df.columns]]
 
     time_for = 0

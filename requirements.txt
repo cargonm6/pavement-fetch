@@ -1,4 +1,5 @@
 pandas==1.4.2
 openpyxl~=3.0.9
 numpy~=1.22.3
-setuptools==62.1.0
+setuptools~=62.1.0
+pypiwin32~=223

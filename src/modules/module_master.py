@@ -695,7 +695,7 @@ def main(project_root):
     csv_path_in = project_root + "/res/csv/ready/"
     csv_path_out = project_root + "/res/csv/done/"
 
-    csv_pci = fix_pci_date(load_csv(csv_path_in + "pci.csv"))  # (PCI) Pavement Condition Index
+    csv_pci = load_csv(csv_path_in + "pci_fixed.csv")  # (PCI) Pavement Condition Index
     csv_iri = load_csv(csv_path_in + "iri.csv")  # (IRI) International Roughness Index
     csv_def = load_csv(csv_path_in + "def.csv")  # (DEF) Deflections
     csv_skn = load_csv(csv_path_in + "skn.csv")  # (SKN) Skid Number
